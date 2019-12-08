@@ -4,6 +4,7 @@ pub struct ProgramState {
     pub index: usize,
     pub inputs: Vec<i32>,
     pub finished: bool,
+    pub inputs_index: usize,
 }
 
 impl ProgramState {
@@ -13,6 +14,7 @@ impl ProgramState {
             index: 0,
             inputs: vec![phase_setting],
             finished: false,
+            inputs_index: 0,
         }
     }
 }
@@ -42,8 +44,6 @@ fn get_value(numbers: &Vec<i32>, index: usize, offset: usize, instructions: &Vec
 }
 
 pub fn run_program(state: &mut ProgramState, limit_input_use: bool) -> Option<i32> {
-    let mut number_of_accepted_inputs = 0;
-
     let mut result = None;
 
     loop {
@@ -71,16 +71,19 @@ pub fn run_program(state: &mut ProgramState, limit_input_use: bool) -> Option<i3
             }
             3 => {
                 let value_pos = state.program[state.index + 1] as usize;
-                if number_of_accepted_inputs >= state.inputs.len() && limit_input_use {
+                // boolean check here for p1/p2 differentiation
+                if state.inputs_index >= state.inputs.len() && limit_input_use {
                     break;
                 }
                 let input = state
                     .inputs
-                    .get(number_of_accepted_inputs)
+                    .get(state.inputs_index)
                     .unwrap_or(state.inputs.last().unwrap());
                 state.program[value_pos] = *input;
 
-                number_of_accepted_inputs += 1;
+                if state.inputs_index < state.inputs.len() {
+                    state.inputs_index += 1;
+                }
                 state.index += 2;
             }
             4 => {

@@ -23,6 +23,7 @@ fn main() {
         index: 0,
         inputs: vec![0, 0],
         finished: false,
+        inputs_index: 0,
     };
 
     for phase_sequence in heap {
@@ -45,54 +46,51 @@ fn main() {
     // part two
     let mut highest_thrust = 0;
     let mut phases = [5, 6, 7, 8, 9];
-    let phase_sequence = [9, 8, 7, 6, 5];
-    // let heap = Heap::new(&mut phases);
+    let heap = Heap::new(&mut phases);
 
-    // for phase_sequence in heap {
-    let mut amplifier_states = [
-        ProgramState::new(&base_program, phase_sequence[0]),
-        ProgramState::new(&base_program, phase_sequence[1]),
-        ProgramState::new(&base_program, phase_sequence[2]),
-        ProgramState::new(&base_program, phase_sequence[3]),
-        ProgramState::new(&base_program, phase_sequence[4]),
-    ];
-    // add a zero to the first one
-    amplifier_states.get_mut(0).unwrap().inputs.push(0);
-    let amplifiers_count = amplifier_states.len();
-    'main: loop {
-        for i in 0..amplifier_states.len() {
-            {
-                let state = amplifier_states.get(i).unwrap();
-                if state.finished {
-                    continue;
-                }
-            }
-            // println!("sequence result {:?}", state.inputs);
-            let result = {
-                let mut state = amplifier_states.get_mut(i).unwrap();
-                intcode::run_program(&mut state, true)
-            };
-
-            if let Some(output) = result {
-                // if result is returned next inputs
+    for phase_sequence in heap {
+        let mut amplifier_states = [
+            ProgramState::new(&base_program, phase_sequence[0]),
+            ProgramState::new(&base_program, phase_sequence[1]),
+            ProgramState::new(&base_program, phase_sequence[2]),
+            ProgramState::new(&base_program, phase_sequence[3]),
+            ProgramState::new(&base_program, phase_sequence[4]),
+        ];
+        // add a zero to the first one
+        amplifier_states.get_mut(0).unwrap().inputs.push(0);
+        let amplifiers_count = amplifier_states.len();
+        'main: loop {
+            for i in 0..amplifier_states.len() {
                 {
-                    let next_state = amplifier_states
-                        .get_mut((i + 1) % amplifiers_count)
-                        .unwrap();
-                    println!("added {} to {:?}", output, next_state.inputs);
-                    next_state.inputs.push(output);
+                    let state = amplifier_states.get(i).unwrap();
+                    if state.finished {
+                        continue;
+                    }
                 }
+                // println!("sequence result {:?}", state.inputs);
+                let result = {
+                    let mut state = amplifier_states.get_mut(i).unwrap();
+                    intcode::run_program(&mut state, true)
+                };
 
-                let state = amplifier_states.get(i).unwrap();
-                if i == amplifiers_count - 1 && state.finished {
-                    highest_thrust = max(highest_thrust, output);
-                    break 'main;
+                if let Some(output) = result {
+                    // if result is returned next inputs
+                    {
+                        let next_state = amplifier_states
+                            .get_mut((i + 1) % amplifiers_count)
+                            .unwrap();
+                        next_state.inputs.push(output);
+                    }
+
+                    let state = amplifier_states.get(i).unwrap();
+                    if i == amplifiers_count - 1 && state.finished {
+                        highest_thrust = max(highest_thrust, output);
+                        break 'main;
+                    }
                 }
             }
         }
     }
-    // }
 
     println!("{}", highest_thrust);
-    println!("{:?}", amplifier_states);
 }
