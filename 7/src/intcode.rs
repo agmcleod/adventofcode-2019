@@ -1,3 +1,22 @@
+#[derive(Debug)]
+pub struct ProgramState {
+    pub program: Vec<i32>,
+    pub index: usize,
+    pub inputs: Vec<i32>,
+    pub finished: bool,
+}
+
+impl ProgramState {
+    pub fn new(base_program: &Vec<i32>, phase_setting: i32) -> Self {
+        ProgramState {
+            program: base_program.clone(),
+            index: 0,
+            inputs: vec![phase_setting],
+            finished: false,
+        }
+    }
+}
+
 fn get_mode(instructions: &Vec<char>, index: usize) -> String {
     if let Some(val) = instructions.get(index) {
         val.to_string()
@@ -22,16 +41,13 @@ fn get_value(numbers: &Vec<i32>, index: usize, offset: usize, instructions: &Vec
     }
 }
 
-pub fn run_program(
-    working_numbers: &mut Vec<i32>,
-    input_val: i32,
-    second_input: i32,
-) -> Option<i32> {
-    let mut index = 0;
+pub fn run_program(state: &mut ProgramState, limit_input_use: bool) -> Option<i32> {
     let mut number_of_accepted_inputs = 0;
 
+    let mut result = None;
+
     loop {
-        let instructions_string = format!("{}", working_numbers[index]);
+        let instructions_string = format!("{}", state.program[state.index]);
         let mut instructions: Vec<char> = instructions_string.chars().collect();
         instructions.reverse();
 
@@ -39,79 +55,85 @@ pub fn run_program(
 
         match op_code {
             1 => {
-                let sum = get_value(&working_numbers, index, 1, &instructions)
-                    + get_value(&working_numbers, index, 2, &instructions);
+                let sum = get_value(&state.program, state.index, 1, &instructions)
+                    + get_value(&state.program, state.index, 2, &instructions);
 
-                let sum_position = working_numbers[index + 3];
-                working_numbers[sum_position as usize] = sum;
-                index += 4;
+                let sum_position = state.program[state.index + 3];
+                state.program[sum_position as usize] = sum;
+                state.index += 4;
             }
             2 => {
-                let product = get_value(&working_numbers, index, 1, &instructions)
-                    * get_value(&working_numbers, index, 2, &instructions);
-                let product_position = working_numbers[index + 3];
-                working_numbers[product_position as usize] = product;
-                index += 4;
+                let product = get_value(&state.program, state.index, 1, &instructions)
+                    * get_value(&state.program, state.index, 2, &instructions);
+                let product_position = state.program[state.index + 3];
+                state.program[product_position as usize] = product;
+                state.index += 4;
             }
             3 => {
-                let value_pos = working_numbers[index + 1] as usize;
-                if number_of_accepted_inputs > 0 {
-                    working_numbers[value_pos] = second_input;
-                } else {
-                    working_numbers[value_pos] = input_val;
+                let value_pos = state.program[state.index + 1] as usize;
+                if number_of_accepted_inputs >= state.inputs.len() && limit_input_use {
+                    break;
                 }
+                let input = state
+                    .inputs
+                    .get(number_of_accepted_inputs)
+                    .unwrap_or(state.inputs.last().unwrap());
+                state.program[value_pos] = *input;
+
                 number_of_accepted_inputs += 1;
-                index += 2;
+                state.index += 2;
             }
             4 => {
-                return Some(working_numbers[working_numbers[index + 1] as usize]);
+                result = Some(state.program[state.program[state.index + 1] as usize]);
+                state.index += 2;
             }
             5 => {
-                if get_value(&working_numbers, index, 1, &instructions) != 0 {
-                    index = get_value(&working_numbers, index, 2, &instructions) as usize;
+                if get_value(&state.program, state.index, 1, &instructions) != 0 {
+                    state.index = get_value(&state.program, state.index, 2, &instructions) as usize;
                 } else {
-                    index += 3;
+                    state.index += 3;
                 }
             }
             6 => {
-                if get_value(&working_numbers, index, 1, &instructions) == 0 {
-                    index = get_value(&working_numbers, index, 2, &instructions) as usize;
+                if get_value(&state.program, state.index, 1, &instructions) == 0 {
+                    state.index = get_value(&state.program, state.index, 2, &instructions) as usize;
                 } else {
-                    index += 3;
+                    state.index += 3;
                 }
             }
             7 => {
-                let pos = working_numbers[index + 3] as usize;
-                if get_value(&working_numbers, index, 1, &instructions)
-                    < get_value(&working_numbers, index, 2, &instructions)
+                let pos = state.program[state.index + 3] as usize;
+                if get_value(&state.program, state.index, 1, &instructions)
+                    < get_value(&state.program, state.index, 2, &instructions)
                 {
-                    working_numbers[pos] = 1;
+                    state.program[pos] = 1;
                 } else {
-                    working_numbers[pos] = 0;
+                    state.program[pos] = 0;
                 }
-                index += 4;
+                state.index += 4;
             }
             8 => {
-                let pos = working_numbers[index + 3] as usize;
-                if get_value(&working_numbers, index, 1, &instructions)
-                    == get_value(&working_numbers, index, 2, &instructions)
+                let pos = state.program[state.index + 3] as usize;
+                if get_value(&state.program, state.index, 1, &instructions)
+                    == get_value(&state.program, state.index, 2, &instructions)
                 {
-                    working_numbers[pos] = 1;
+                    state.program[pos] = 1;
                 } else {
-                    working_numbers[pos] = 0;
+                    state.program[pos] = 0;
                 }
-                index += 4;
+                state.index += 4;
             }
             9 => {
                 if instructions[1] == '9' {
+                    state.finished = true;
                     break;
                 } else {
                     panic!("Invalid opcode {}{}", instructions[1], instructions[0]);
                 }
             }
-            _ => panic!("Invalid opcode {} at {}", op_code, index),
+            _ => panic!("Invalid opcode {} at {}", op_code, state.index),
         }
     }
 
-    None
+    result
 }

@@ -5,6 +5,8 @@ use read_input::read_text;
 
 mod intcode;
 
+use intcode::ProgramState;
+
 fn main() {
     let text = read_text("7/input.txt").unwrap();
 
@@ -15,14 +17,25 @@ fn main() {
     let heap = Heap::new(&mut phases);
 
     let mut highest_thrust = 0;
-    let mut working_numbers = base_program.clone();
+
+    let mut state = ProgramState {
+        program: base_program.clone(),
+        index: 0,
+        inputs: vec![0, 0],
+        finished: false,
+    };
+
     for phase_sequence in heap {
         let mut result = 0;
         for sequence in &phase_sequence {
             for (idx, num) in base_program.iter().enumerate() {
-                working_numbers[idx] = *num;
+                state.program[idx] = *num;
             }
-            result = intcode::run_program(&mut working_numbers, *sequence, result).unwrap();
+
+            state.inputs = vec![*sequence, result];
+            state.index = 0;
+
+            result = intcode::run_program(&mut state, false).unwrap();
         }
         highest_thrust = max(highest_thrust, result);
     }
@@ -32,46 +45,54 @@ fn main() {
     // part two
     let mut highest_thrust = 0;
     let mut phases = [5, 6, 7, 8, 9];
+    let phase_sequence = [9, 8, 7, 6, 5];
     // let heap = Heap::new(&mut phases);
 
     // for phase_sequence in heap {
     let mut amplifier_states = [
-        base_program.clone(),
-        base_program.clone(),
-        base_program.clone(),
-        base_program.clone(),
-        base_program.clone(),
+        ProgramState::new(&base_program, phase_sequence[0]),
+        ProgramState::new(&base_program, phase_sequence[1]),
+        ProgramState::new(&base_program, phase_sequence[2]),
+        ProgramState::new(&base_program, phase_sequence[3]),
+        ProgramState::new(&base_program, phase_sequence[4]),
     ];
-    let mut index = 0;
-    let mut result = 0;
-    let phase_sequence = [9, 8, 7, 6, 5];
-    loop {
-        for (i, sequence) in phase_sequence.iter().enumerate() {
-            let input = if index == 0 {
-                // if first iteration, start with the sequence number
-                *sequence
-            } else {
-                result
-            };
-            println!(
-                "sequence {} iteration {} result {}",
-                sequence, index, result
-            );
-            // if result is returned update local var
-            if let Some(new_result) =
-                intcode::run_program(amplifier_states.get_mut(i).unwrap(), input, result)
+    // add a zero to the first one
+    amplifier_states.get_mut(0).unwrap().inputs.push(0);
+    let amplifiers_count = amplifier_states.len();
+    'main: loop {
+        for i in 0..amplifier_states.len() {
             {
-                result = new_result;
-            } else {
-                // otherwise assume program E ended
-                println!("set output {}", result);
-                highest_thrust = max(highest_thrust, result);
-                break;
+                let state = amplifier_states.get(i).unwrap();
+                if state.finished {
+                    continue;
+                }
+            }
+            // println!("sequence result {:?}", state.inputs);
+            let result = {
+                let mut state = amplifier_states.get_mut(i).unwrap();
+                intcode::run_program(&mut state, true)
+            };
+
+            if let Some(output) = result {
+                // if result is returned next inputs
+                {
+                    let next_state = amplifier_states
+                        .get_mut((i + 1) % amplifiers_count)
+                        .unwrap();
+                    println!("added {} to {:?}", output, next_state.inputs);
+                    next_state.inputs.push(output);
+                }
+
+                let state = amplifier_states.get(i).unwrap();
+                if i == amplifiers_count - 1 && state.finished {
+                    highest_thrust = max(highest_thrust, output);
+                    break 'main;
+                }
             }
         }
-        index += 1;
     }
     // }
 
     println!("{}", highest_thrust);
+    println!("{:?}", amplifier_states);
 }
