@@ -35,6 +35,8 @@ fn main() {
 
             state.inputs = vec![*sequence, result];
             state.index = 0;
+            state.inputs_index = 0;
+            state.finished = false;
 
             result = intcode::run_program(&mut state, false).unwrap();
         }
@@ -67,7 +69,6 @@ fn main() {
                         continue;
                     }
                 }
-                // println!("sequence result {:?}", state.inputs);
                 let result = {
                     let mut state = amplifier_states.get_mut(i).unwrap();
                     intcode::run_program(&mut state, true)
