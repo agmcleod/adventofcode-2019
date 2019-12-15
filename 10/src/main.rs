@@ -26,7 +26,7 @@ fn main() {
         let mut angles = HashSet::new();
         for coord2 in &coords {
             let angle = get_angle(&coord, &coord2);
-            angles.insert(format!("{}", angle));
+            angles.insert((angle * 100000.0) as i32);
         }
 
         if angles.len() > most_count {
