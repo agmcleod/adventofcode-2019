@@ -1,25 +1,6 @@
-use std::collections::{HashMap, HashSet};
-use std::fmt;
+use std::collections::HashSet;
 
 use read_input::read_text;
-
-enum Coordinate {
-    Asteroid,
-    Open,
-}
-
-impl fmt::Display for Coordinate {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Coordinate::Asteroid => "#",
-                _ => ".",
-            }
-        )
-    }
-}
 
 fn get_angle(coord: &(usize, usize), coord2: &(usize, usize)) -> f64 {
     (coord2.1 as f64 - coord.1 as f64).atan2(coord2.0 as f64 - coord.0 as f64)
@@ -28,7 +9,6 @@ fn get_angle(coord: &(usize, usize), coord2: &(usize, usize)) -> f64 {
 fn main() {
     let text = read_text("10/input.txt").unwrap();
 
-    let mut grid = HashMap::new();
     let mut coords = Vec::new();
 
     for (row, line) in text.lines().enumerate() {
@@ -36,13 +16,6 @@ fn main() {
             if ch == '#' {
                 coords.push((col, row));
             }
-            grid.insert(
-                (col, row),
-                match ch {
-                    '#' => Coordinate::Asteroid,
-                    _ => Coordinate::Open,
-                },
-            );
         }
     }
 
@@ -53,7 +26,7 @@ fn main() {
         let mut angles = HashSet::new();
         for coord2 in &coords {
             let angle = get_angle(&coord, &coord2);
-            angles.insert((angle * 180.0 / std::f64::consts::PI) as u32);
+            angles.insert(format!("{}", angle));
         }
 
         if angles.len() > most_count {
