@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 use read_input::read_text;
@@ -8,7 +8,7 @@ enum Coordinate {
     Open,
 }
 
-impl fmt::Debug for Coordinate {
+impl fmt::Display for Coordinate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -21,8 +21,8 @@ impl fmt::Debug for Coordinate {
     }
 }
 
-fn get_angle(coord: &(usize, usize), coord2: &(usize, usize)) -> f32 {
-    (coord2.1 as f32 - coord.1 as f32).atan2(coord2.0 as f32 - coord.0 as f32)
+fn get_angle(coord: &(usize, usize), coord2: &(usize, usize)) -> f64 {
+    (coord2.1 as f64 - coord.1 as f64).atan2(coord2.0 as f64 - coord.0 as f64)
 }
 
 fn main() {
@@ -33,7 +33,9 @@ fn main() {
 
     for (row, line) in text.lines().enumerate() {
         for (col, ch) in line.chars().enumerate() {
-            coords.push((col, row));
+            if ch == '#' {
+                coords.push((col, row));
+            }
             grid.insert(
                 (col, row),
                 match ch {
@@ -44,19 +46,21 @@ fn main() {
         }
     }
 
-    let mut angular_data = HashMap::new();
+    let mut most_count = 0;
+    let mut best_coord = (0, 0);
 
-    for (i, coord) in coords.iter().enumerate() {
-        for coord2 in coords.iter().skip(i + 1) {
+    for coord in &coords {
+        let mut angles = HashSet::new();
+        for coord2 in &coords {
             let angle = get_angle(&coord, &coord2);
-            angular_data.insert((coord, coord2), angle);
-            angular_data.insert((coord2, coord), angle);
+            angles.insert((angle * 180.0 / std::f64::consts::PI) as u32);
+        }
+
+        if angles.len() > most_count {
+            most_count = angles.len();
+            best_coord = *coord;
         }
     }
 
-    let mut best_spot: (Option<(usize, usize)>, usize) = (None, 0);
-
-    for coord in &coords {
-        for coord2 in &coords
-    }
+    println!("{}, {:?}", most_count, best_coord);
 }
