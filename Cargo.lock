@@ -26,6 +26,10 @@ name = "four"
 version = "0.1.0"
 
 [[package]]
+name = "intcode"
+version = "0.1.0"
+
+[[package]]
 name = "nine"
 version = "0.1.0"
 dependencies = [
@@ -67,6 +71,14 @@ dependencies = [
 name = "ten"
 version = "0.1.0"
 dependencies = [
+ "read_input 0.1.0",
+]
+
+[[package]]
+name = "thirteen"
+version = "0.1.0"
+dependencies = [
+ "intcode 0.1.0",
  "read_input 0.1.0",
 ]
 
