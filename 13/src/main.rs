@@ -23,12 +23,8 @@ impl TileType {
     }
 }
 
-fn main() {
-    let text = read_input::read_text("13/input.txt").unwrap();
-
-    let base_program: Vec<i64> = text.split(",").map(|n| n.parse().expect("nope")).collect();
-
-    let mut state = ProgramState::new(&base_program, vec![]);
+fn part_one(base_program: &Vec<i64>) {
+    let mut state = ProgramState::new(base_program, vec![]);
 
     let mut output_counter = 0;
 
@@ -55,4 +51,19 @@ fn main() {
             .filter(|tile| tile.2 == TileType::Block)
             .count()
     );
+}
+
+fn part_two(base_program: &Vec<i64>) {
+    let mut state = ProgramState::new(base_program, vec![]);
+    state.program[0] = 2;
+}
+
+fn main() {
+    let text = read_input::read_text("13/input.txt").unwrap();
+
+    let base_program: Vec<i64> = text.split(",").map(|n| n.parse().expect("nope")).collect();
+
+    part_one(&base_program);
+
+    part_two(&base_program);
 }
