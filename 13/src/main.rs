@@ -55,7 +55,41 @@ fn part_one(base_program: &Vec<i64>) {
 
 fn part_two(base_program: &Vec<i64>) {
     let mut state = ProgramState::new(base_program, vec![]);
+    // play for free
     state.program[0] = 2;
+
+    let mut coords = (0, 0);
+    let mut output_counter = 0;
+    let mut horizontal_paddle = (0, 0);
+    let mut ball = (0, 0);
+    let mut score = 0;
+    run_program(&mut state, false, |state, output| {
+        output_counter += 1;
+        if output_counter == 1 {
+            coords.0 = output;
+        } else if output_counter == 2 {
+            coords.1 = output;
+        } else {
+            if coords == (-1, 0) {
+                score = output;
+            } else if output == 3 {
+                horizontal_paddle = coords;
+            } else if output == 4 {
+                ball = coords;
+            }
+            output_counter = 0;
+        }
+
+        if horizontal_paddle.0 > ball.0 {
+            state.inputs = vec![-1];
+        } else if horizontal_paddle.0 < ball.0 {
+            state.inputs = vec![1];
+        } else {
+            state.inputs = vec![0];
+        }
+    });
+
+    println!("{}", score);
 }
 
 fn main() {
