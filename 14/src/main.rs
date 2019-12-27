@@ -1,14 +1,16 @@
-use read_input::read_text;
+use std::cmp;
 use std::collections::HashMap;
 
+use read_input::read_text;
+
 struct Reaction {
-    requirements: Vec<(String, i32)>,
+    requirements: Vec<(String, i64)>,
     output_type: String,
-    output_amount: i32,
+    output_amount: i64,
 }
 
 impl Reaction {
-    fn new(requirements: Vec<(String, i32)>, output_type: String, output_amount: i32) -> Self {
+    fn new(requirements: Vec<(String, i64)>, output_type: String, output_amount: i64) -> Self {
         Reaction {
             requirements,
             output_type,
@@ -17,7 +19,7 @@ impl Reaction {
     }
 }
 
-fn get_count_with_chemical(text: &str) -> (String, i32) {
+fn get_count_with_chemical(text: &str) -> (String, i64) {
     let mut iter = text.split(" ");
     let number = iter.next().unwrap().parse().unwrap();
     let chemical = iter.next().unwrap().to_string();
@@ -25,26 +27,19 @@ fn get_count_with_chemical(text: &str) -> (String, i32) {
     (chemical, number)
 }
 
-fn add_to_factory(factory: &mut HashMap<String, i32>, reaction: &String, amount: i32) {
+fn add_to_factory(factory: &mut HashMap<String, i64>, reaction: &String, amount: i64) {
     if factory.contains_key(reaction) {
         *factory.get_mut(reaction).unwrap() += amount;
     } else {
         factory.insert(reaction.clone(), amount);
     }
-
-    println!(
-        "Added {} {}, total {}",
-        amount,
-        reaction,
-        factory.get(reaction).unwrap()
-    );
 }
 
 fn sum_amounts_for_chemical(
     reactions: &HashMap<String, Reaction>,
-    factory: &mut HashMap<String, i32>,
+    factory: &mut HashMap<String, i64>,
     current_reaction: &Reaction,
-) -> i32 {
+) -> i64 {
     current_reaction
         .requirements
         .iter()
@@ -52,19 +47,14 @@ fn sum_amounts_for_chemical(
             let mut default = 0;
             let amount = factory.get_mut(&requirement.0).unwrap_or(&mut default);
 
-            println!(
-                "Need {}, we have {} of {}",
-                requirement.1, amount, requirement.0
-            );
-
-            if *amount > requirement.1 {
+            if *amount >= requirement.1 {
                 // consume it from the factory
                 *amount -= requirement.1;
                 sum + 0
             } else {
-                // base material, like ORE`
+                // base material, like ORE
                 if !reactions.contains_key(&requirement.0) {
-                    println!("returning {} + {} {}", sum, requirement.1, requirement.0);
+                    *factory.get_mut(&requirement.0).unwrap() -= requirement.1;
                     sum + requirement.1
                 } else {
                     let reaction = reactions.get(&requirement.0).unwrap();
@@ -78,6 +68,8 @@ fn sum_amounts_for_chemical(
                         }
                     }
 
+                    *factory.get_mut(&reaction.output_type).unwrap() -= requirement.1;
+
                     sum + sub_total
                 }
             }
@@ -89,6 +81,7 @@ fn main() {
 
     let mut requirements = HashMap::new();
     let mut factory = HashMap::new();
+    factory.insert("ORE".to_string(), 0);
 
     for line in text.lines() {
         let mut iter = line.split(" => ");
@@ -109,8 +102,6 @@ fn main() {
     }
 
     let reaction = requirements.get("FUEL").unwrap();
-    println!(
-        "{}",
-        sum_amounts_for_chemical(&requirements, &mut factory, reaction)
-    );
+    let ore_per_fuel = sum_amounts_for_chemical(&requirements, &mut factory, reaction);
+    println!("{}", ore_per_fuel);
 }
