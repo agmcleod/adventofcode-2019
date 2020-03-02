@@ -1,8 +1,8 @@
-use std::cmp;
 use std::collections::HashMap;
 
 use read_input::read_text;
 
+#[derive(Clone, Debug)]
 struct Reaction {
     requirements: Vec<(String, i64)>,
     output_type: String,
@@ -48,13 +48,14 @@ fn sum_amounts_for_chemical(
             let amount = factory.get_mut(&requirement.0).unwrap_or(&mut default);
 
             if *amount >= requirement.1 {
-                // consume it from the factory
+                // already have enough, consume it from the factory
                 *amount -= requirement.1;
+                // dont pass additional, as we didnt manufacturer the resources
                 sum + 0
             } else {
                 // base material, like ORE
                 if !reactions.contains_key(&requirement.0) {
-                    *factory.get_mut(&requirement.0).unwrap() -= requirement.1;
+                    // return the ore produced
                     sum + requirement.1
                 } else {
                     let reaction = reactions.get(&requirement.0).unwrap();
@@ -102,6 +103,64 @@ fn main() {
     }
 
     let reaction = requirements.get("FUEL").unwrap();
-    let ore_per_fuel = sum_amounts_for_chemical(&requirements, &mut factory, reaction);
+    let ore_per_fuel = sum_amounts_for_chemical(&requirements, &mut factory.clone(), reaction);
     println!("{}", ore_per_fuel);
+
+    let mut multiplier = 10;
+    let tril = 1_000_000_000_000;
+
+    // find high bound multiplier
+    loop {
+        let mut multiplied_requirements = requirements.clone();
+
+        for (_, reaction) in &mut multiplied_requirements {
+            reaction.output_amount *= multiplier;
+            for req in &mut reaction.requirements {
+                req.1 *= multiplier;
+            }
+        }
+
+        let ore_per_fuel =
+            sum_amounts_for_chemical(&multiplied_requirements, &mut factory.clone(), reaction);
+        if ore_per_fuel >= tril {
+            break;
+        }
+
+        multiplier *= 10;
+    }
+
+    let mut min = multiplier / 10;
+    let mut max = multiplier;
+
+    // binary search
+    loop {
+        let current = (max - min) / 2 + min;
+        let mut multiplied_requirements = requirements.clone();
+
+        for (_, reaction) in &mut multiplied_requirements {
+            reaction.output_amount *= current;
+            for req in &mut reaction.requirements {
+                req.1 *= current;
+            }
+        }
+
+        let mut attempt_factory = factory.clone();
+        let ore_per_fuel =
+            sum_amounts_for_chemical(&multiplied_requirements, &mut attempt_factory, reaction);
+
+        // println!("=====\n{} < {}, {}", min, max, current);
+        // println!("{}", ore_per_fuel);
+        // println!("{}\n=====", tril);
+        if ore_per_fuel == tril {
+            println!("{}", current);
+            break;
+        } else if max - min <= 1 {
+            println!("{}, {}", min, ore_per_fuel);
+            break;
+        } else if ore_per_fuel > tril {
+            max = current;
+        } else {
+            min = current;
+        }
+    }
 }
