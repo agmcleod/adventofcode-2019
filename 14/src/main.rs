@@ -39,6 +39,7 @@ fn sum_amounts_for_chemical(
     reactions: &HashMap<String, Reaction>,
     factory: &mut HashMap<String, i64>,
     current_reaction: &Reaction,
+    multiplier: i64,
 ) -> i64 {
     current_reaction
         .requirements
@@ -47,29 +48,35 @@ fn sum_amounts_for_chemical(
             let mut default = 0;
             let amount = factory.get_mut(&requirement.0).unwrap_or(&mut default);
 
-            if *amount >= requirement.1 {
+            if *amount >= requirement.1 * multiplier {
                 // already have enough, consume it from the factory
-                *amount -= requirement.1;
+                *amount -= requirement.1 * multiplier;
                 // dont pass additional, as we didnt manufacturer the resources
                 sum + 0
             } else {
                 // base material, like ORE
                 if !reactions.contains_key(&requirement.0) {
                     // return the ore produced
-                    sum + requirement.1
+                    sum + requirement.1 * multiplier
                 } else {
                     let reaction = reactions.get(&requirement.0).unwrap();
                     let mut sub_total = 0;
+                    let target = requirement.1 * multiplier;
 
                     loop {
-                        sub_total += sum_amounts_for_chemical(reactions, factory, reaction);
-                        add_to_factory(factory, &reaction.output_type, reaction.output_amount);
-                        if *factory.get(&reaction.output_type).unwrap() >= requirement.1 {
+                        sub_total +=
+                            sum_amounts_for_chemical(reactions, factory, reaction, multiplier);
+                        add_to_factory(
+                            factory,
+                            &reaction.output_type,
+                            reaction.output_amount * multiplier,
+                        );
+                        if *factory.get(&reaction.output_type).unwrap() >= target {
                             break;
                         }
                     }
 
-                    *factory.get_mut(&reaction.output_type).unwrap() -= requirement.1;
+                    *factory.get_mut(&reaction.output_type).unwrap() -= target;
 
                     sum + sub_total
                 }
@@ -102,8 +109,12 @@ fn main() {
         );
     }
 
-    let reaction = requirements.get("FUEL").unwrap();
-    let ore_per_fuel = sum_amounts_for_chemical(&requirements, &mut factory.clone(), reaction);
+    let ore_per_fuel = sum_amounts_for_chemical(
+        &requirements,
+        &mut factory.clone(),
+        requirements.get("FUEL").unwrap(),
+        1,
+    );
     println!("{}", ore_per_fuel);
 
     let mut multiplier = 10;
@@ -111,17 +122,12 @@ fn main() {
 
     // find high bound multiplier
     loop {
-        let mut multiplied_requirements = requirements.clone();
-
-        for (_, reaction) in &mut multiplied_requirements {
-            reaction.output_amount *= multiplier;
-            for req in &mut reaction.requirements {
-                req.1 *= multiplier;
-            }
-        }
-
-        let ore_per_fuel =
-            sum_amounts_for_chemical(&multiplied_requirements, &mut factory.clone(), reaction);
+        let ore_per_fuel = sum_amounts_for_chemical(
+            &requirements,
+            &mut factory.clone(),
+            requirements.get("FUEL").unwrap(),
+            multiplier,
+        );
         if ore_per_fuel >= tril {
             break;
         }
@@ -130,23 +136,19 @@ fn main() {
     }
 
     let mut min = multiplier / 10;
-    let mut max = multiplier;
+    let mut max = tril;
 
     // binary search
     loop {
         let current = (max - min) / 2 + min;
-        let mut multiplied_requirements = requirements.clone();
-
-        for (_, reaction) in &mut multiplied_requirements {
-            reaction.output_amount *= current;
-            for req in &mut reaction.requirements {
-                req.1 *= current;
-            }
-        }
 
         let mut attempt_factory = factory.clone();
-        let ore_per_fuel =
-            sum_amounts_for_chemical(&multiplied_requirements, &mut attempt_factory, reaction);
+        let ore_per_fuel = sum_amounts_for_chemical(
+            &requirements,
+            &mut attempt_factory,
+            requirements.get("FUEL").unwrap(),
+            current,
+        );
 
         // println!("=====\n{} < {}, {}", min, max, current);
         // println!("{}", ore_per_fuel);
