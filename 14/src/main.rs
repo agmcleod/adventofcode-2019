@@ -48,20 +48,21 @@ fn sum_amounts_for_chemical(
             let mut default = 0;
             let amount = factory.get_mut(&requirement.0).unwrap_or(&mut default);
 
-            if *amount >= requirement.1 * multiplier {
+            let target = requirement.1 * multiplier;
+
+            if *amount >= target {
                 // already have enough, consume it from the factory
-                *amount -= requirement.1 * multiplier;
+                *amount -= target;
                 // dont pass additional, as we didnt manufacturer the resources
                 sum + 0
             } else {
                 // base material, like ORE
                 if !reactions.contains_key(&requirement.0) {
                     // return the ore produced
-                    sum + requirement.1 * multiplier
+                    sum + target
                 } else {
                     let reaction = reactions.get(&requirement.0).unwrap();
                     let mut sub_total = 0;
-                    let target = requirement.1 * multiplier;
 
                     loop {
                         sub_total +=
@@ -150,9 +151,6 @@ fn main() {
             current,
         );
 
-        // println!("=====\n{} < {}, {}", min, max, current);
-        // println!("{}", ore_per_fuel);
-        // println!("{}\n=====", tril);
         if ore_per_fuel == tril {
             println!("{}", current);
             break;
