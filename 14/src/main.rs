@@ -3,14 +3,26 @@ use std::collections::HashMap;
 use read_input::read_text;
 
 #[derive(Clone, Debug)]
+struct Requirement {
+    name: String,
+    amount: i64,
+}
+
+impl Requirement {
+    fn new(name: String, amount: i64) -> Self {
+        Requirement { name, amount }
+    }
+}
+
+#[derive(Clone, Debug)]
 struct Reaction {
-    requirements: Vec<(String, i64)>,
+    requirements: Vec<Requirement>,
     output_type: String,
     output_amount: i64,
 }
 
 impl Reaction {
-    fn new(requirements: Vec<(String, i64)>, output_type: String, output_amount: i64) -> Self {
+    fn new(requirements: Vec<Requirement>, output_type: String, output_amount: i64) -> Self {
         Reaction {
             requirements,
             output_type,
@@ -19,12 +31,12 @@ impl Reaction {
     }
 }
 
-fn get_count_with_chemical(text: &str) -> (String, i64) {
+fn get_requirement_from_text(text: &str) -> Requirement {
     let mut iter = text.split(" ");
     let number = iter.next().unwrap().parse().unwrap();
     let chemical = iter.next().unwrap().to_string();
 
-    (chemical, number)
+    Requirement::new(chemical, number)
 }
 
 fn add_to_factory(factory: &mut HashMap<String, i64>, reaction: &String, amount: i64) {
@@ -46,40 +58,50 @@ fn sum_amounts_for_chemical(
         .iter()
         .fold(0, |sum, requirement| {
             let mut default = 0;
-            let amount = factory.get_mut(&requirement.0).unwrap_or(&mut default);
+            let amount_in_factory = factory.get_mut(&requirement.name).unwrap_or(&mut default);
 
-            let target = requirement.1 * multiplier;
+            let target = requirement.amount * multiplier;
 
-            if *amount >= target {
+            let remainder_in_factory_by_multiplier = if *amount_in_factory == 0 {
+                0
+            } else {
+                target % *amount_in_factory
+            };
+            if remainder_in_factory_by_multiplier == 0 && *amount_in_factory >= target {
                 // already have enough, consume it from the factory
-                *amount -= target;
-                // dont pass additional, as we didnt manufacturer the resources
+                *amount_in_factory -= target;
+                // dont pass additional, as we didnt manufacturer the resources,
+                // also it probably wasn't ore
                 sum + 0
             } else {
                 // base material, like ORE
-                if !reactions.contains_key(&requirement.0) {
+                if !reactions.contains_key(&requirement.name) {
                     // return the ore produced
                     sum + target
                 } else {
-                    let reaction = reactions.get(&requirement.0).unwrap();
-                    let mut sub_total = 0;
+                    let requirement_reaction = reactions.get(&requirement.name).unwrap();
+                    let mut ore_total = 0;
 
                     loop {
-                        sub_total +=
-                            sum_amounts_for_chemical(reactions, factory, reaction, multiplier);
+                        ore_total += sum_amounts_for_chemical(
+                            reactions,
+                            factory,
+                            requirement_reaction,
+                            multiplier,
+                        );
                         add_to_factory(
                             factory,
-                            &reaction.output_type,
-                            reaction.output_amount * multiplier,
+                            &requirement_reaction.output_type,
+                            requirement_reaction.output_amount * remainder_in_factory_by_multiplier,
                         );
-                        if *factory.get(&reaction.output_type).unwrap() >= target {
+                        if *factory.get(&requirement_reaction.output_type).unwrap() >= target {
                             break;
                         }
                     }
 
-                    *factory.get_mut(&reaction.output_type).unwrap() -= target;
+                    *factory.get_mut(&requirement_reaction.output_type).unwrap() -= target;
 
-                    sum + sub_total
+                    sum + ore_total
                 }
             }
         })
@@ -96,16 +118,16 @@ fn main() {
         let mut iter = line.split(" => ");
         let inputs = iter.next().unwrap();
         let output = iter.next().unwrap();
-        let output_details = get_count_with_chemical(output);
+        let output_details = get_requirement_from_text(output);
         requirements.insert(
-            output_details.0.clone(),
+            output_details.name.clone(),
             Reaction::new(
                 inputs
                     .split(", ")
-                    .map(|input| get_count_with_chemical(input))
+                    .map(|input| get_requirement_from_text(input))
                     .collect(),
-                output_details.0,
-                output_details.1,
+                output_details.name,
+                output_details.amount,
             ),
         );
     }
@@ -163,4 +185,14 @@ fn main() {
             min = current;
         }
     }
+
+    let mut attempt_factory = factory.clone();
+    let ore_per_fuel = sum_amounts_for_chemical(
+        &requirements,
+        &mut attempt_factory,
+        requirements.get("FUEL").unwrap(),
+        82892753,
+    );
+
+    println!("trying for test number: {} == 82892753", ore_per_fuel);
 }
