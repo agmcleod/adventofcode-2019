@@ -62,12 +62,7 @@ fn sum_amounts_for_chemical(
 
             let target = requirement.amount * multiplier;
 
-            let remainder_in_factory_by_multiplier = if *amount_in_factory == 0 {
-                0
-            } else {
-                target % *amount_in_factory
-            };
-            if remainder_in_factory_by_multiplier == 0 && *amount_in_factory >= target {
+            if *amount_in_factory >= target {
                 // already have enough, consume it from the factory
                 *amount_in_factory -= target;
                 // dont pass additional, as we didnt manufacturer the resources,
@@ -92,7 +87,7 @@ fn sum_amounts_for_chemical(
                         add_to_factory(
                             factory,
                             &requirement_reaction.output_type,
-                            requirement_reaction.output_amount * remainder_in_factory_by_multiplier,
+                            requirement_reaction.output_amount * multiplier,
                         );
                         if *factory.get(&requirement_reaction.output_type).unwrap() >= target {
                             break;
