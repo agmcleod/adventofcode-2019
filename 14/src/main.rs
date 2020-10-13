@@ -133,7 +133,7 @@ fn main() {
         requirements.get("FUEL").unwrap(),
         1,
     );
-    println!("{}", ore_per_fuel);
+    println!("fuel for 1 ore {}", ore_per_fuel);
 
     let mut multiplier = 10;
     let tril = 1_000_000_000_000;
@@ -172,7 +172,7 @@ fn main() {
             println!("{}", current);
             break;
         } else if max - min <= 1 {
-            println!("{}, {}", min, ore_per_fuel);
+            println!("{}, {}", current, ore_per_fuel);
             break;
         } else if ore_per_fuel > tril {
             max = current;
@@ -180,14 +180,4 @@ fn main() {
             min = current;
         }
     }
-
-    let mut attempt_factory = factory.clone();
-    let ore_per_fuel = sum_amounts_for_chemical(
-        &requirements,
-        &mut attempt_factory,
-        requirements.get("FUEL").unwrap(),
-        82892753,
-    );
-
-    println!("trying for test number: {} == 82892753", ore_per_fuel);
 }
