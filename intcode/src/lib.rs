@@ -95,7 +95,7 @@ fn insert_into_program(program: &mut Vec<i64>, position: usize, value: i64) {
 
 pub fn run_program<F>(state: &mut ProgramState, limit_input_use: bool, mut handle_output: F)
 where
-    F: FnMut(&mut ProgramState, i64),
+    F: FnMut(&mut ProgramState, i64) -> bool,
 {
     loop {
         let instructions_string = format!("{}", state.program[state.index]);
@@ -139,8 +139,11 @@ where
             }
             4 => {
                 let output = get_value(&state.program, &state, 1, &instructions);
-                handle_output(state, output);
+                let exit_now = handle_output(state, output);
                 state.index += 2;
+                if exit_now {
+                    break
+                }
             }
             5 => {
                 if get_value(&state.program, &state, 1, &instructions) != 0 {

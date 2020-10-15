@@ -87,6 +87,8 @@ fn part_two(base_program: &Vec<i64>) {
         } else {
             state.inputs = vec![0];
         }
+
+        false
     });
 
     println!("{}", score);
