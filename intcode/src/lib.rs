@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ProgramState {
     pub program: Vec<i64>,
     pub index: usize,
@@ -139,10 +139,10 @@ where
             }
             4 => {
                 let output = get_value(&state.program, &state, 1, &instructions);
-                let exit_now = handle_output(state, output);
                 state.index += 2;
+                let exit_now = handle_output(state, output);
                 if exit_now {
-                    break
+                    break;
                 }
             }
             5 => {

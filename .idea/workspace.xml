@@ -24,11 +24,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="742c1a28-e3a1-431d-be31-0a0cac5dd354" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/15/input.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/adventofcode-2019.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/adventofcode-2019.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/13/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/13/src/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.lock" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/15/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/15/src/main.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/intcode/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/intcode/src/lib.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -55,8 +53,26 @@
     <property name="project.structure.last.edited" value="Modules" />
     <property name="project.structure.proportion" value="0.0" />
     <property name="project.structure.side.proportion" value="0.0" />
+    <property name="settings.editor.selected.configurable" value="language.rust" />
+  </component>
+  <component name="RunManager">
+    <configuration name="Run" type="CargoCommandRunConfiguration" factoryName="Cargo Command" nameIsGenerated="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="run" />
+      <option name="allFeatures" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
   </component>
   <component name="RustProjectSettings">
+    <option name="externalLinter" value="Clippy" />
+    <option name="runExternalLinterOnTheFly" value="true" />
+    <option name="runRustfmtOnSave" value="true" />
     <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
     <option name="version" value="2" />
   </component>
@@ -81,19 +97,41 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="WindowStateProjectService">
+    <state x="1032" y="524" key="#Notifications" timestamp="1602814596550">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="1032" y="524" key="#Notifications/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1602814596550" />
     <state x="760" y="274" key="#Project_Structure" timestamp="1602730625712">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="760" y="274" key="#Project_Structure/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1602730625712" />
-    <state x="987" y="433" width="585" height="534" key="find.popup" timestamp="1602731085165">
+    <state x="734" y="355" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1602814629012">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
-    <state x="987" y="433" width="585" height="534" key="find.popup/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1602731085165" />
-    <state x="431" y="145" key="search.everywhere.popup" timestamp="1602628908068">
-      <screen x="0" y="0" width="1536" height="824" />
+    <state x="734" y="355" key="#com.intellij.execution.impl.EditConfigurationsDialog/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1602814629012" />
+    <state x="1085" y="416" key="#com.intellij.ide.util.MemberChooser" timestamp="1603069577232">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="1085" y="416" key="#com.intellij.ide.util.MemberChooser/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1603069577232" />
+    <state x="960" y="436" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog" timestamp="1602983922728">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="960" y="436" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1602983922728" />
+    <state x="781" y="345" key="SettingsEditor" timestamp="1602983917324">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="781" y="345" key="SettingsEditor/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1602983917324" />
+    <state x="987" y="433" width="585" height="534" key="find.popup" timestamp="1602987959050">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="987" y="433" width="585" height="534" key="find.popup/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1602987959050" />
+    <state x="718" y="246" width="672" height="678" key="search.everywhere.popup" timestamp="1603073542380">
+      <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="431" y="145" key="search.everywhere.popup/0.0.1536.824@0.0.1536.824" timestamp="1602628908068" />
+    <state x="718" y="246" width="672" height="678" key="search.everywhere.popup/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1603073542380" />
   </component>
 </project>
