@@ -1,5 +1,5 @@
 use std::cmp;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter, Result};
 
 use crate::Direction::Down;
@@ -125,6 +125,10 @@ fn queue_new_work(
     }
 }
 
+fn get_magnitude(coord1: &(i64, i64), coord2: &(i64, i64)) -> (i64, i64) {
+    (coord1.0 - coord2.0, coord1.1 - coord2.1)
+}
+
 fn main() {
     let text = read_input::read_text("15/input.txt").unwrap();
 
@@ -205,16 +209,44 @@ fn main() {
 
     let mut count = 0;
     let mut current_coord = oxygen_coord.unwrap().clone();
+    let mut vector = None;
+
+    let mut path_home = HashSet::new();
+    path_home.insert(current_coord.clone());
 
     loop {
         let next = paths.get(&current_coord).unwrap();
         count += 1;
+
+        path_home.insert(next.clone());
         if next == &(0, 0) {
+            count += 1;
             break;
+        }
+
+        if vector.is_none() {
+            vector = Some(get_magnitude(&current_coord, next))
+        } else {
+            let next_magnitude = get_magnitude(&current_coord, next);
+            if vector.unwrap() != next_magnitude {
+                // count += 1;
+                vector = Some(next_magnitude);
+            }
         }
 
         current_coord = *next;
     }
+
+    // for y in (min_y..=max_y) {
+    //     for x in (min_x..=max_x) {
+    //         if path_home.contains(&(x, y)) {
+    //             print!("-");
+    //         } else {
+    //             print!("{}", map.get(&(x, y)).unwrap_or(&TileType::Unknown));
+    //         }
+    //     }
+    //     print!("\n");
+    // }
 
     println!("{}", count);
 }

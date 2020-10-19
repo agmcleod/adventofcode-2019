@@ -24,10 +24,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="742c1a28-e3a1-431d-be31-0a0cac5dd354" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/adventofcode-2019.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/adventofcode-2019.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/15/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/15/src/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/intcode/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/intcode/src/lib.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -120,6 +118,22 @@
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
     <state x="960" y="436" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1602983922728" />
+    <state width="2517" height="401" key="GridCell.Tab.0.bottom" timestamp="1603078278370">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state width="2517" height="401" key="GridCell.Tab.0.bottom/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1603078278370" />
+    <state width="2517" height="401" key="GridCell.Tab.0.center" timestamp="1603078278370">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state width="2517" height="401" key="GridCell.Tab.0.center/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1603078278370" />
+    <state width="2517" height="401" key="GridCell.Tab.0.left" timestamp="1603078278370">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state width="2517" height="401" key="GridCell.Tab.0.left/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1603078278370" />
+    <state width="2517" height="401" key="GridCell.Tab.0.right" timestamp="1603078278370">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state width="2517" height="401" key="GridCell.Tab.0.right/2560.0.1920.1040/0.0.2560.1400@0.0.2560.1400" timestamp="1603078278370" />
     <state x="781" y="345" key="SettingsEditor" timestamp="1602983917324">
       <screen x="0" y="0" width="2560" height="1400" />
     </state>
