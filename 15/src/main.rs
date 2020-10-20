@@ -8,7 +8,7 @@ use read_input;
 use std::hash::Hash;
 use std::time::Duration;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum TileType {
     Empty,
     Wall,
@@ -21,7 +21,7 @@ impl Display for TileType {
         let string_value = match *self {
             TileType::Empty => " ",
             TileType::Wall => "#",
-            TileType::Oxygen => "O",
+            TileType::Oxygen => ".",
             TileType::Unknown => "?",
         };
 
@@ -35,6 +35,17 @@ enum Direction {
     Down = 2,
     Left = 3,
     Right = 4,
+}
+
+impl Direction {
+    fn as_coord(&self, from: &(i64, i64)) -> (i64, i64) {
+        match *self {
+            Direction::Up => (from.0, from.1 - 1),
+            Direction::Down => (from.0, from.1 + 1),
+            Direction::Left => (from.0 - 1, from.1),
+            Direction::Right => (from.0 + 1, from.1),
+        }
+    }
 }
 
 struct Work {
@@ -60,40 +71,53 @@ impl Work {
     }
 }
 
-fn add_direction_to_coord(coord: &mut (i64, i64), direction: Direction) {
-    match direction {
-        Direction::Up => {
-            coord.1 -= 1;
-        }
-        Direction::Down => {
-            coord.1 += 1;
-        }
-        Direction::Left => {
-            coord.0 -= 1;
-        }
-        Direction::Right => {
-            coord.0 += 1;
-        }
-    }
-}
-
 fn get_adjacents(
     coord: &(i64, i64),
     map: &HashMap<(i64, i64), TileType>,
 ) -> Vec<((i64, i64), Direction)> {
     let mut adjacents = Vec::new();
 
-    if !map.contains_key(&(coord.0, coord.1 - 1)) {
-        adjacents.push(((coord.0, coord.1 - 1), Direction::Up));
+    let up = Direction::Up.as_coord(coord);
+    if !map.contains_key(&up) {
+        adjacents.push((up, Direction::Up));
     }
-    if !map.contains_key(&(coord.0, coord.1 + 1)) {
-        adjacents.push(((coord.0, coord.1 + 1), Direction::Down));
+    let down = Direction::Down.as_coord(coord);
+    if !map.contains_key(&down) {
+        adjacents.push((down, Direction::Down));
     }
-    if !map.contains_key(&(coord.0 - 1, coord.1)) {
-        adjacents.push(((coord.0 - 1, coord.1), Direction::Left));
+    let left = Direction::Left.as_coord(coord);
+    if !map.contains_key(&left) {
+        adjacents.push((left, Direction::Left));
     }
-    if !map.contains_key(&(coord.0 + 1, coord.1)) {
-        adjacents.push(((coord.0 + 1, coord.1), Direction::Right));
+    let right = Direction::Right.as_coord(coord);
+    if !map.contains_key(&right) {
+        adjacents.push((right, Direction::Right));
+    }
+
+    adjacents
+}
+
+fn get_adjacent_empties(
+    coord: &(i64, i64),
+    map: &HashMap<(i64, i64), TileType>,
+) -> Vec<(i64, i64)> {
+    let mut adjacents = Vec::new();
+
+    let up = Direction::Up.as_coord(coord);
+    if map.get(&up).unwrap_or(&TileType::Unknown) == &TileType::Empty {
+        adjacents.push(up);
+    }
+    let down = Direction::Down.as_coord(coord);
+    if map.get(&down).unwrap_or(&TileType::Unknown) == &TileType::Empty {
+        adjacents.push(down);
+    }
+    let left = Direction::Left.as_coord(coord);
+    if map.get(&left).unwrap_or(&TileType::Unknown) == &TileType::Empty {
+        adjacents.push(left);
+    }
+    let right = Direction::Right.as_coord(coord);
+    if map.get(&right).unwrap_or(&TileType::Unknown) == &TileType::Empty {
+        adjacents.push(right);
     }
 
     adjacents
@@ -127,6 +151,27 @@ fn queue_new_work(
 
 fn get_magnitude(coord1: &(i64, i64), coord2: &(i64, i64)) -> (i64, i64) {
     (coord1.0 - coord2.0, coord1.1 - coord2.1)
+}
+
+fn print_map(
+    min_x: i64,
+    min_y: i64,
+    max_x: i64,
+    max_y: i64,
+    render_path: bool,
+    path_home: &HashSet<(i64, i64)>,
+    map: &HashMap<(i64, i64), TileType>,
+) {
+    for y in (min_y..=max_y) {
+        for x in (min_x..=max_x) {
+            if render_path && path_home.contains(&(x, y)) {
+                print!("-");
+            } else {
+                print!("{}", map.get(&(x, y)).unwrap_or(&TileType::Unknown));
+            }
+        }
+        print!("\n");
+    }
 }
 
 fn main() {
@@ -166,13 +211,12 @@ fn main() {
 
     map.insert((0, 0), TileType::Unknown);
 
-    let mut quit = false;
     let mut oxygen_coord = None;
     let mut min_x: i64 = 0;
     let mut min_y: i64 = 0;
     let mut max_x: i64 = 0;
     let mut max_y: i64 = 0;
-    while work_to_do.len() > 0 && !quit {
+    while work_to_do.len() > 0 {
         let mut work = work_to_do.remove(0);
         let coord = work.coord.clone();
         let prev_coord = work.prev_coord.clone();
@@ -188,7 +232,6 @@ fn main() {
             } else if output == 2 {
                 map.insert(coord.clone(), TileType::Oxygen);
                 oxygen_coord = Some(coord);
-                quit = true;
             }
 
             if let Some(prev_coord) = prev_coord {
@@ -207,9 +250,10 @@ fn main() {
         });
     }
 
+    let oxygen_coord = oxygen_coord.unwrap();
+
     let mut count = 0;
-    let mut current_coord = oxygen_coord.unwrap().clone();
-    let mut vector = None;
+    let mut current_coord = oxygen_coord.clone();
 
     let mut path_home = HashSet::new();
     path_home.insert(current_coord.clone());
@@ -224,29 +268,34 @@ fn main() {
             break;
         }
 
-        if vector.is_none() {
-            vector = Some(get_magnitude(&current_coord, next))
-        } else {
-            let next_magnitude = get_magnitude(&current_coord, next);
-            if vector.unwrap() != next_magnitude {
-                // count += 1;
-                vector = Some(next_magnitude);
-            }
-        }
-
         current_coord = *next;
     }
 
-    // for y in (min_y..=max_y) {
-    //     for x in (min_x..=max_x) {
-    //         if path_home.contains(&(x, y)) {
-    //             print!("-");
-    //         } else {
-    //             print!("{}", map.get(&(x, y)).unwrap_or(&TileType::Unknown));
-    //         }
-    //     }
-    //     print!("\n");
-    // }
-
     println!("{}", count);
+
+    // print_map(min_x, min_y, max_x, max_y, false, &path_home, &map);
+
+    let mut work = vec![(oxygen_coord, 0)];
+    let mut max_depth = 0;
+
+    loop {
+        let (coord, level) = work.remove(0);
+
+        max_depth = cmp::max(level, max_depth);
+
+        let adjacents = get_adjacent_empties(&coord, &map);
+
+        for adjacent in &adjacents {
+            map.insert(*adjacent, TileType::Oxygen);
+            work.push((*adjacent, level + 1));
+        }
+
+        if work.is_empty() {
+            break;
+        }
+    }
+
+    // print_map(min_x, min_y, max_x, max_y, false, &path_home, &map);
+
+    println!("{}", max_depth);
 }
