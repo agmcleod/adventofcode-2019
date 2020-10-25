@@ -49,19 +49,30 @@ fn main() {
 
     let initial: Vec<i32> = get_initial(&text);
 
-    let mut input_list: Vec<i32> = Vec::with_capacity(input_list.len() * 10000);
+    let offset: String = initial[0..7].iter().fold(String::new(), |result, n| {
+        format!("{}{}", result, n)
+    });
 
-    for _ in 0..10000 {
+    let offset: usize = offset.parse().unwrap();
+
+    let offset_relative_index = offset % initial.len();
+
+    let repetitions = 10;
+
+    let mut input_list: Vec<i32> = Vec::with_capacity(input_list.len() * repetitions);
+
+    for _ in 0..repetitions {
         input_list.append(&mut initial.clone());
     }
 
     let input_list = fft(input_list);
 
-    println!(
-        "{:?}",
-        input_list[0..8]
-            .iter()
-            .map(|n| n.to_string())
-            .collect::<String>()
-    );
+    let mut index = offset_relative_index;
+    loop {
+        println!("{:?}", &input_list[index..index + 7]);
+        index += initial.len();
+        if index >= input_list.len() {
+            break
+        }
+    }
 }
