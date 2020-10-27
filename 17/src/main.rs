@@ -2,7 +2,7 @@ use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 
-use intcode::{ProgramState, run_program};
+use intcode::{run_program, ProgramState};
 use read_input::read_text;
 
 enum TileType {
@@ -25,11 +25,7 @@ type Coord = (i64, i64);
 
 type Tiles = HashMap<Coord, TileType>;
 
-fn print_map(
-    max_x: i64,
-    max_y: i64,
-    tiles: &Tiles,
-) {
+fn print_map(max_x: i64, max_y: i64, tiles: &Tiles) {
     for y in 0..=max_y {
         for x in 0..=max_x {
             let coord = (x, y);
@@ -52,7 +48,7 @@ fn main() {
 
     let mut coord = (0, 0);
     let mut max_x = 0;
-    run_program(&mut program_state, false, |program_state, value| {
+    run_program(&mut program_state, false, |_program_state, value| {
         if value == 35 {
             tiles.insert(coord.clone(), TileType::Scaffold);
             scaffold_spots.insert(coord.clone());
@@ -75,10 +71,17 @@ fn main() {
     let mut sum = 0;
 
     for coord in &scaffold_spots {
-        if scaffold_spots.contains(&(coord.0 - 1, coord.1)) && scaffold_spots.contains(&(coord.0 + 1, coord.1)) && scaffold_spots.contains(&(coord.0, coord.1 - 1)) && scaffold_spots.contains(&(coord.0, coord.1 + 1)) {
+        if scaffold_spots.contains(&(coord.0 - 1, coord.1))
+            && scaffold_spots.contains(&(coord.0 + 1, coord.1))
+            && scaffold_spots.contains(&(coord.0, coord.1 - 1))
+            && scaffold_spots.contains(&(coord.0, coord.1 + 1))
+        {
             sum += coord.0 * coord.1;
         }
     }
 
     println!("p1: {}", sum);
+
+    let mut program_state = ProgramState::new(&base_program, Vec::new());
+    program_state.program[0] = 2;
 }
