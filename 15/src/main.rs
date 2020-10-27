@@ -149,11 +149,7 @@ fn queue_new_work(
     }
 }
 
-fn get_magnitude(coord1: &(i64, i64), coord2: &(i64, i64)) -> (i64, i64) {
-    (coord1.0 - coord2.0, coord1.1 - coord2.1)
-}
-
-fn print_map(
+fn _print_map(
     min_x: i64,
     min_y: i64,
     max_x: i64,
@@ -162,8 +158,8 @@ fn print_map(
     path_home: &HashSet<(i64, i64)>,
     map: &HashMap<(i64, i64), TileType>,
 ) {
-    for y in (min_y..=max_y) {
-        for x in (min_x..=max_x) {
+    for y in min_y..=max_y {
+        for x in min_x..=max_x {
             if render_path && path_home.contains(&(x, y)) {
                 print!("-");
             } else {
