@@ -19,13 +19,7 @@ fn fft(mut input_list: Vec<i32>) -> Vec<i32> {
                 }))
                 .sum();
 
-                total
-                    .to_string()
-                    .chars()
-                    .last()
-                    .unwrap()
-                    .to_digit(10)
-                    .unwrap() as i32
+                (total % 10).abs()
             })
             .collect();
 
@@ -40,7 +34,7 @@ fn main() {
     let input_list = fft(get_initial(&text));
 
     println!(
-        "{:?}",
+        "p1: {:?}",
         input_list[0..8]
             .iter()
             .map(|n| n.to_string())
@@ -55,24 +49,31 @@ fn main() {
 
     let offset: usize = offset.parse().unwrap();
 
-    let offset_relative_index = offset % initial.len();
+    let target_capacity = initial.len() * 10000;
+    let mut long_input: Vec<i32> = Vec::with_capacity(target_capacity);
 
-    let repetitions = 10;
-
-    let mut input_list: Vec<i32> = Vec::with_capacity(input_list.len() * repetitions);
-
-    for _ in 0..repetitions {
-        input_list.append(&mut initial.clone());
+    while long_input.len() < target_capacity {
+        long_input.append(&mut initial.clone());
     }
 
-    let input_list = fft(input_list);
-
-    let mut index = offset_relative_index;
-    loop {
-        println!("{:?}", &input_list[index..index + 7]);
-        index += initial.len();
-        if index >= input_list.len() {
-            break
+    let mut new_list = long_input.clone();
+    for _ in 0..100 {
+        for i in (offset..long_input.len()).rev() {
+            new_list[i] = if i + 1 < long_input.len() {
+                (long_input[i] + new_list[i + 1]) % 10
+            } else {
+                long_input[i]
+            };
         }
+
+        long_input = new_list.clone();
     }
+
+    println!(
+        "p2: {:?}",
+        new_list[offset..offset+8]
+            .iter()
+            .map(|n| n.to_string())
+            .collect::<String>()
+    );
 }
