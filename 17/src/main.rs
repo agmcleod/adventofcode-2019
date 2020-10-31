@@ -41,28 +41,28 @@ impl FacingDirection {
                 } else {
                     *self = FacingDirection::Right;
                 }
-            },
+            }
             FacingDirection::Left => {
                 if turn == TurnDirection::Left {
                     *self = FacingDirection::Down;
                 } else {
                     *self = FacingDirection::Up;
                 }
-            },
+            }
             FacingDirection::Right => {
                 if turn == TurnDirection::Left {
                     *self = FacingDirection::Up;
                 } else {
                     *self = FacingDirection::Down;
                 }
-            },
+            }
             FacingDirection::Down => {
                 if turn == TurnDirection::Left {
                     *self = FacingDirection::Right;
                 } else {
                     *self = FacingDirection::Left;
                 }
-            },
+            }
         }
     }
 }
@@ -107,7 +107,7 @@ fn move_by_direction(tiles: &Tiles, coord: &mut Coord, direction: &FacingDirecti
                     return true;
                 }
             }
-        },
+        }
         FacingDirection::Up => {
             if let Some(tile) = tiles.get(&(coord.0, coord.1 - 1)) {
                 if *tile == TileType::Scaffold {
@@ -115,7 +115,7 @@ fn move_by_direction(tiles: &Tiles, coord: &mut Coord, direction: &FacingDirecti
                     return true;
                 }
             }
-        },
+        }
         FacingDirection::Left => {
             if let Some(tile) = tiles.get(&(coord.0 - 1, coord.1)) {
                 if *tile == TileType::Scaffold {
@@ -123,7 +123,7 @@ fn move_by_direction(tiles: &Tiles, coord: &mut Coord, direction: &FacingDirecti
                     return true;
                 }
             }
-        },
+        }
         FacingDirection::Right => {
             if let Some(tile) = tiles.get(&(coord.0 + 1, coord.1)) {
                 if *tile == TileType::Scaffold {
@@ -131,7 +131,7 @@ fn move_by_direction(tiles: &Tiles, coord: &mut Coord, direction: &FacingDirecti
                     return true;
                 }
             }
-        },
+        }
     }
 
     false
@@ -161,7 +161,7 @@ fn build_commands(tiles: &Tiles, robot_coord: &Coord) -> Vec<String> {
                 let moved = move_by_direction(&tiles, &mut coord, &dir);
                 // no place left to go
                 if !moved {
-                    break
+                    break;
                 }
             }
 
@@ -177,13 +177,18 @@ fn build_commands(tiles: &Tiles, robot_coord: &Coord) -> Vec<String> {
     commands
 }
 
-fn get_next_index(used_command_index: &Vec<usize>, start: &usize, base_size: &usize, total_commands: usize) -> Option<usize> {
-    for i in *start+1..total_commands {
+fn get_next_index(
+    used_command_index: &Vec<usize>,
+    start: &usize,
+    base_size: &usize,
+    total_commands: usize,
+) -> Option<usize> {
+    for i in *start + 1..total_commands {
         let mut chunk_used = false;
-        for chunk_index in i..i+*base_size {
+        for chunk_index in i..i + *base_size {
             if used_command_index.contains(&chunk_index) {
                 chunk_used = true;
-                break
+                break;
             }
         }
 
@@ -246,49 +251,35 @@ fn main() {
 
     println!("p1: {}", sum);
 
-    let commands = build_commands(&tiles, &robot_coord);
+    let functions = vec![
+        vec!["L", "10", "R", "8", "R", "8\n"],
+        vec!["L", "10", "L", "12", "R", "8", "R", "10\n"],
+        vec!["R", "10", "L", "12", "R", "10\n"],
+    ];
 
-    let mut functions: [Vec::<String>; 3] = [Vec::new(), Vec::new(), Vec::new()];
-    let mut function_mapping = HashMap::new();
-    let mut used_command_index = Vec::new();
+    let mut functions: Vec<i64> = functions
+        .iter()
+        .flat_map(|command: &Vec<&str>| {
+            let vec = command.join(",").as_bytes().to_vec();
+            vec.iter().map(|digit| *digit as i64).collect::<Vec<i64>>()
+        })
+        .collect();
 
-    let mut set_functions_count = 0;
-    let mut base_size = 2;
-    let mut index = 0;
-    loop {
-        let steps = &commands[index..index + base_size];
+    let mut main_command: Vec<i64> = "A,A,B,C,B,C,B,C,C,A\n"
+        .as_bytes()
+        .iter()
+        .map(|digit| *digit as i64)
+        .collect();
 
-        functions[set_functions_count] = steps.iter().cloned().collect::<Vec<String>>();
+    main_command.append(&mut functions);
+    main_command.append(&mut vec![110, 10]);
 
-        function_mapping.insert(set_functions_count, vec![index]);
-        used_command_index.append(&mut (index..index + base_size).collect());
-
-        loop {
-            let next_index = get_next_index(&used_command_index, &index, &base_size, commands.len());
-            if next_index.is_none() {
-                break
-            }
-            index = next_index.unwrap();
-            let steps = &commands[index..index + base_size];
-            if functions[set_functions_count].as_slice().eq(steps) {
-                used_command_index.append(&mut (index..index + base_size).collect());
-                function_mapping.get_mut(&set_functions_count).unwrap().push(index);
-            }
-        }
-
-        set_functions_count += 1;
-
-        if set_functions_count == 3 {
-            if  used_command_index.len() == commands.len() {
-                break
-            }
-            set_functions_count = 0;
-            function_mapping.clear();
-            used_command_index.clear();
-            base_size += 1;
-        }
-    }
-
-    let mut program_state = ProgramState::new(&base_program, Vec::new());
+    let mut program_state = ProgramState::new(&base_program, main_command);
     program_state.program[0] = 2;
+
+    run_program(&mut program_state, true, |_program_state, value| {
+        println!("p2 output {}", value);
+
+        false
+    });
 }

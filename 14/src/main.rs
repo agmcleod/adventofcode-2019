@@ -79,23 +79,20 @@ fn sum_amounts_for_chemical(
 
                     let remaining_needed = target - *amount_in_factory;
                     let mut multiplier = remaining_needed / requirement_reaction.output_amount;
-                    if multiplier == 0 || remaining_needed % requirement_reaction.output_amount != 0 {
+                    if multiplier == 0 || remaining_needed % requirement_reaction.output_amount != 0
+                    {
                         multiplier += 1;
                     }
                     ore_total += sum_amounts_for_chemical(
                         reactions,
                         factory,
                         requirement_reaction,
-                        multiplier
+                        multiplier,
                     );
 
                     let produced = multiplier * requirement_reaction.output_amount;
 
-                    add_to_factory(
-                        factory,
-                        &requirement_reaction.output_type,
-                        produced
-                    );
+                    add_to_factory(factory, &requirement_reaction.output_type, produced);
 
                     *factory.get_mut(&requirement_reaction.output_type).unwrap() -= target;
 

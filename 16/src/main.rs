@@ -43,9 +43,9 @@ fn main() {
 
     let initial: Vec<i32> = get_initial(&text);
 
-    let offset: String = initial[0..7].iter().fold(String::new(), |result, n| {
-        format!("{}{}", result, n)
-    });
+    let offset: String = initial[0..7]
+        .iter()
+        .fold(String::new(), |result, n| format!("{}{}", result, n));
 
     let offset: usize = offset.parse().unwrap();
 
@@ -71,7 +71,7 @@ fn main() {
 
     println!(
         "p2: {:?}",
-        new_list[offset..offset+8]
+        new_list[offset..offset + 8]
             .iter()
             .map(|n| n.to_string())
             .collect::<String>()
