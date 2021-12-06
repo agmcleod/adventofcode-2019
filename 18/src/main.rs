@@ -45,53 +45,102 @@ impl Ord for Work {
     }
 }
 
-fn add_move_option(
-    options: &mut Vec<Pos>,
-    tile: &Tile,
-    next_pos: (usize, usize),
-    keys: &Vec<String>,
-) {
-    match tile {
-        &Tile::Open => {
-            options.push(next_pos);
-        }
-        Tile::Door(value) => {
-            if keys.contains(&value.to_lowercase()) {
-                options.push(next_pos);
-            }
-        }
-        Tile::Key(_value) => {
-            options.push(next_pos);
-        }
-        _ => {}
+#[derive(Eq, PartialEq)]
+struct PathLocation {
+    pos: Pos,
+    cost: usize,
+}
+
+impl Ord for PathLocation {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.cost.cmp(&self.cost)
     }
 }
 
-fn get_next_steps(
-    used_tiles: &HashSet<Pos>,
-    pos: &Pos,
-    room: &Room,
-    keys: &Vec<String>,
-) -> Vec<Pos> {
+impl PartialOrd for PathLocation {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+struct PathResult {
+    from: Pos,
+    to: Pos,
+    blocked_by: Option<String>,
+    distance: usize,
+}
+
+impl PathResult {
+    fn new(from: Pos, to: Pos, blocked_by: Option<String>, distance: usize) -> Self {
+        PathResult {
+            from,
+            to,
+            blocked_by,
+            distance,
+        }
+    }
+}
+
+impl std::fmt::Debug for PathResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // f.debug_struct("PathResult").field("from", &self.from).field("to", &self.to).field("blocked_by", &self.blocked_by).field("distance", &self.distance).finish()
+        f.write_fmt(format_args!(
+            "from: {:?} to: {:?}, blocked?: {:?}, distance: {}",
+            self.from, self.to, self.blocked_by, self.distance
+        ))
+    }
+}
+
+fn add_move_option(options: &mut Vec<Pos>, tile: &Tile, next_pos: (usize, usize)) {
+    match tile {
+        &Tile::Wall => {}
+        _ => {
+            options.push(next_pos);
+        }
+    }
+}
+
+fn get_next_steps(pos: &Pos, room: &Room) -> Vec<Pos> {
     let mut options = Vec::new();
     let left = (pos.0 - 1, pos.1);
-    if room.contains_key(&left) && !used_tiles.contains(&left) {
-        add_move_option(&mut options, room.get(&left).unwrap(), left, keys);
+    if room.contains_key(&left) {
+        add_move_option(&mut options, room.get(&left).unwrap(), left);
     }
     let right = (pos.0 + 1, pos.1);
-    if room.contains_key(&right) && !used_tiles.contains(&right) {
-        add_move_option(&mut options, room.get(&right).unwrap(), right, keys);
+    if room.contains_key(&right) {
+        add_move_option(&mut options, room.get(&right).unwrap(), right);
     }
     let up = (pos.0, pos.1 - 1);
-    if room.contains_key(&up) && !used_tiles.contains(&up) {
-        add_move_option(&mut options, room.get(&up).unwrap(), up, keys);
+    if room.contains_key(&up) {
+        add_move_option(&mut options, room.get(&up).unwrap(), up);
     }
     let down = (pos.0, pos.1 + 1);
-    if room.contains_key(&down) && !used_tiles.contains(&down) {
-        add_move_option(&mut options, room.get(&down).unwrap(), down, keys);
+    if room.contains_key(&down) {
+        add_move_option(&mut options, room.get(&down).unwrap(), down);
     }
 
     options
+}
+
+fn distance_to_target(location: &Pos, target: &Pos) -> usize {
+    let mut x_diff = location.1 as i16 - target.1 as i16;
+    let mut y_diff = location.0 as i16 - target.0 as i16;
+    if x_diff < 0 {
+        x_diff *= -1;
+    }
+    if y_diff < 0 {
+        y_diff *= -1;
+    }
+
+    x_diff as usize + y_diff as usize
+}
+
+fn get_door<'a, 'b>(room: &'a Room, pos: &'b Pos) -> Option<&'a String> {
+    let tile = room.get(pos).unwrap();
+    match tile {
+        &Tile::Door(ref v) => Some(v),
+        _ => None,
+    }
 }
 
 fn main() -> Result<()> {
@@ -100,6 +149,8 @@ fn main() -> Result<()> {
     let mut room: Room = HashMap::new();
 
     let mut player_pos = (0, 0);
+
+    let mut key_positions = HashMap::new();
 
     for (row, line) in input.lines().enumerate() {
         for (col, ch) in line.chars().enumerate() {
@@ -113,6 +164,7 @@ fn main() -> Result<()> {
             } else {
                 let value = ch.to_string();
                 if value == value.to_lowercase() {
+                    key_positions.insert(value.clone(), (col, row));
                     room.insert((col, row), Tile::Key(value));
                 } else {
                     room.insert((col, row), Tile::Door(value));
@@ -121,79 +173,71 @@ fn main() -> Result<()> {
         }
     }
 
-    let mut work_items = BinaryHeap::new();
-    work_items.push(Work {
-        used_tiles: HashSet::new(),
-        move_count: 0,
-        pos: player_pos,
-        room,
-        keys: Vec::new(),
-    });
+    let mut paths: HashMap<String, PathResult> = HashMap::new();
 
-    loop {
-        let work = work_items.pop();
-        if work.is_none() {
-            break;
-        }
+    for (key, key_pos) in &key_positions {
+        let mut closed: HashMap<Pos, Pos> = HashMap::new();
+        let mut costs: HashMap<Pos, usize> = HashMap::new();
+        costs.insert(player_pos.clone(), 0);
 
-        let mut work = work.unwrap();
+        let mut heap = BinaryHeap::new();
+        heap.push(PathLocation {
+            pos: player_pos,
+            cost: 0,
+        });
 
-        let tile = work.room.get(&work.pos).unwrap();
-        match tile {
-            Tile::Door(value) => {
-                if !work.keys.contains(&value.to_lowercase()) {
-                    panic!(
-                        "Landed on door {} but does not have a key on ring: {:?}",
-                        value, work.keys
-                    );
-                }
+        let mut tracked_positions: Vec<Pos> = Vec::new();
 
-                work.room.insert(work.pos, Tile::Open);
-                work.used_tiles.clear();
-            }
-            Tile::Key(value) => {
-                work.keys.push(value.clone());
-                work.room.insert(work.pos, Tile::Open);
-                work.used_tiles.clear();
+        let mut blocked_by = None;
 
-                let mut has_keys = false;
-                for (_key, tile) in &work.room {
-                    match tile {
-                        Tile::Key(_v) => {
-                            has_keys = true;
-                            break;
+        while let Some(path_location) = heap.pop() {
+            if path_location.pos == *key_pos {
+                let mut pos = closed.get(&path_location.pos).unwrap();
+                tracked_positions.push(path_location.pos);
+
+                loop {
+                    if let Some(p) = closed.get(&pos) {
+                        let door_tile = get_door(&room, p);
+                        if door_tile.is_some() {
+                            blocked_by = door_tile;
                         }
-                        _ => {}
+                        tracked_positions.push(*p);
+                        pos = p;
+                    } else {
+                        break;
                     }
                 }
+                break;
+            }
 
-                if !has_keys {
-                    println!("{}, keys: {:?}", work.move_count, work.keys);
-                    break;
+            let options = get_next_steps(&path_location.pos, &room);
+
+            for option in &options {
+                let new_cost = costs.get(&path_location.pos).unwrap() + 1;
+                if !costs.contains_key(option) || new_cost < *costs.get(option).unwrap() {
+                    heap.push(PathLocation {
+                        cost: new_cost + distance_to_target(option, key_pos),
+                        pos: option.to_owned(),
+                    });
+                    closed.insert(option.to_owned(), path_location.pos.clone());
+                    costs.insert(option.to_owned(), new_cost);
                 }
             }
-            _ => {}
         }
 
-        work.used_tiles.insert(work.pos.clone());
+        paths.insert(
+            format!("@->{}", key),
+            PathResult::new(
+                player_pos.clone(),
+                key_pos.to_owned(),
+                blocked_by.map(|v| v.to_owned()),
+                tracked_positions.len(),
+            ),
+        );
+    }
 
-        let options = get_next_steps(&work.used_tiles, &work.pos, &work.room, &work.keys);
-        for opt in &options {
-            work_items.push(Work {
-                used_tiles: work.used_tiles.clone(),
-                move_count: work.move_count + 1,
-                pos: opt.to_owned(),
-                room: work.room.clone(),
-                keys: work.keys.clone(),
-            })
-        }
-
-        // println!(
-        //     "Added work: {:?} from {:?} for new count: {}",
-        //     options,
-        //     work.pos,
-        //     work.move_count + 1
-        // );
+    for (key, res) in &paths {
+        println!("{} - {:?}", key, res);
     }
 
     Ok(())
