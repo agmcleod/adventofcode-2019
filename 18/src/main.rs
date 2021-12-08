@@ -1,6 +1,7 @@
 use std::cmp::{Eq, Ord, Ordering};
 use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::io::Result;
+use std::path;
 
 use read_input;
 
@@ -36,45 +37,18 @@ impl PartialOrd for PathLocation {
 struct PathResult {
     from: Pos,
     to: Pos,
-    blocked_by: Vec<String>,
+    blocked_by: HashSet<String>,
     distance: usize,
 }
 
 impl PathResult {
-    fn new(from: Pos, to: Pos, blocked_by: Vec<String>, distance: usize) -> Self {
+    fn new(from: Pos, to: Pos, blocked_by: HashSet<String>, distance: usize) -> Self {
         PathResult {
             from,
             to,
             blocked_by,
             distance,
         }
-    }
-}
-
-struct IterationState {
-    collected_keys: HashSet<String>,
-    steps: usize,
-    pos: Pos,
-    key_path: Vec<String>,
-}
-
-impl Eq for IterationState {}
-
-impl PartialEq for IterationState {
-    fn eq(&self, other: &Self) -> bool {
-        self.steps == other.steps
-    }
-}
-
-impl PartialOrd for IterationState {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for IterationState {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other.steps.cmp(&self.steps)
     }
 }
 
@@ -140,41 +114,28 @@ fn get_door<'a, 'b>(room: &'a Room, pos: &'b Pos) -> Option<&'a String> {
     }
 }
 
-fn get_key<'a, 'b>(room: &'a Room, pos: &'b Pos) -> Option<&'a String> {
-    let tile = room.get(pos).unwrap();
-    match tile {
-        &Tile::Key(ref v) => Some(v),
-        _ => None,
+fn get_paths_key(path_keys: &[String]) -> String {
+    if path_keys[0] == "@" {
+        path_keys.join("->")
+    } else {
+        let mut path_keys = path_keys.to_owned();
+        path_keys.sort();
+        path_keys.join("->")
     }
 }
 
-fn get_paths_key(path_keys: &[String]) -> String {
-    path_keys.join("->")
-}
-
-fn get_path<'a>(
+fn write_path<'a>(
     room: &Room,
     key_positions: &HashMap<String, Pos>,
-    paths: &'a mut HashMap<String, PathResult>,
+    paths: &mut HashMap<String, PathResult>,
     player_pos: &Pos,
     path_keys: &Vec<String>,
-) -> &'a PathResult {
+) {
     let path_key = get_paths_key(path_keys);
-    let mut prev_step_distance: usize = 0;
-    if paths.contains_key(&path_key) {
-        return paths.get(&path_key).unwrap();
-    } else if path_keys.len() > 2 {
-        // we try one level back, to see if we have that path already, and use it as a starting point
-        let prev_step_path_key = get_paths_key(&path_keys[0..path_keys.len() - 1]);
-        if paths.contains_key(&prev_step_path_key) {
-            prev_step_distance = paths.get(&prev_step_path_key).unwrap().distance;
-        }
-    }
-
-    let from_pos = if path_keys.len() == 2 {
+    let from_key = path_keys.first().unwrap();
+    let from_pos = if from_key == "@" {
         player_pos
     } else {
-        let from_key = path_keys.get(path_keys.len() - 2).unwrap();
         key_positions.get(from_key).unwrap()
     };
 
@@ -192,18 +153,17 @@ fn get_path<'a>(
 
     let mut tracked_positions: Vec<Pos> = Vec::new();
 
-    let mut blocked_by = Vec::new();
+    let mut blocked_by = HashSet::new();
 
     while let Some(path_location) = heap.pop() {
         if path_location.pos == *to_pos {
-            let mut pos = closed.get(&path_location.pos).unwrap();
-            tracked_positions.push(path_location.pos);
+            let mut pos = &path_location.pos;
 
             loop {
                 if let Some(p) = closed.get(&pos) {
                     let door_tile = get_door(&room, p);
                     if door_tile.is_some() {
-                        blocked_by.push(door_tile.unwrap().to_owned());
+                        blocked_by.insert(door_tile.unwrap().to_owned());
                     }
                     tracked_positions.push(*p);
                     pos = p;
@@ -229,27 +189,85 @@ fn get_path<'a>(
         }
     }
 
-    // println!(
-    //     "path from {} {:?} to {} {:?}, result {} total {}",
-    //     path_keys.get(path_keys.len() - 2).unwrap(),
-    //     from_pos,
-    //     path_keys.last().unwrap(),
-    //     to_pos,
-    //     tracked_positions.len(),
-    //     tracked_positions.len() + prev_step_distance
-    // );
-
     paths.insert(
         path_key.clone(),
         PathResult::new(
             from_pos.clone(),
             to_pos.to_owned(),
             blocked_by,
-            tracked_positions.len() + prev_step_distance,
+            tracked_positions.len(),
         ),
     );
+}
 
-    paths.get(&path_key).unwrap()
+fn get_path<'a>(
+    paths: &'a HashMap<String, PathResult>,
+    current_key: &String,
+    next_key: &String,
+) -> &'a PathResult {
+    let key = get_paths_key(&vec![current_key.to_owned(), next_key.to_owned()]);
+    match paths.get(&key) {
+        Some(res) => res,
+        None => panic!("Could not find path for key: {}", key),
+    }
+}
+
+fn get_distance_to_collect_keys(
+    room: &Room,
+    key_positions: &HashMap<String, Pos>,
+    paths: &HashMap<String, PathResult>,
+    distance_cache: &mut HashMap<(String, Vec<String>), usize>,
+    current_key: &String,
+    keys_to_collect: Vec<String>,
+) -> usize {
+    if keys_to_collect.len() == 0 {
+        return 0;
+    }
+
+    if distance_cache.contains_key(&(current_key.to_owned(), keys_to_collect.clone())) {
+        return *distance_cache
+            .get(&(current_key.to_owned(), keys_to_collect))
+            .unwrap();
+    }
+
+    let reachable_keys: Vec<&String> = keys_to_collect
+        .iter()
+        .filter(|next_key| {
+            let path_to_next_key = get_path(paths, current_key, *next_key);
+            // check that the path to the key has no doors that we have yet to collect keys for
+            keys_to_collect
+                .iter()
+                .filter(|k| path_to_next_key.blocked_by.contains(&k.to_uppercase()))
+                .count()
+                == 0
+        })
+        .collect();
+
+    if reachable_keys.len() == 0 {
+        return 0;
+    }
+
+    let mut count = std::usize::MAX;
+    for key in &reachable_keys {
+        let distance = get_path(paths, current_key, key).distance
+            + get_distance_to_collect_keys(
+                room,
+                key_positions,
+                paths,
+                distance_cache,
+                key,
+                keys_to_collect
+                    .iter()
+                    .filter(|k| k != key)
+                    .cloned()
+                    .collect(),
+            );
+        count = count.min(distance);
+    }
+
+    distance_cache.insert((current_key.to_owned(), keys_to_collect.clone()), count);
+
+    count
 }
 
 fn main() -> Result<()> {
@@ -286,95 +304,43 @@ fn main() -> Result<()> {
 
     let player_start_key = "@".to_string();
 
-    let keys_array = key_positions
+    let keys_to_collect = key_positions
         .iter()
         .map(|(key, _pos)| key.to_owned())
         .collect::<Vec<String>>();
 
-    for key in &keys_array {
-        get_path(
+    for (i, key) in keys_to_collect.iter().enumerate() {
+        write_path(
             &room,
             &key_positions,
             &mut paths,
             &player_pos,
             &vec![player_start_key.clone(), key.to_owned()],
         );
-    }
 
-    let mut heap = BinaryHeap::new();
-
-    heap.push(IterationState {
-        collected_keys: HashSet::new(),
-        pos: player_pos.clone(),
-        steps: 0,
-        key_path: vec!["@".to_string()],
-    });
-
-    while let Some(mut state) = heap.pop() {
-        let player_key = "@".to_string();
-        let from_key = get_key(&room, &state.pos).unwrap_or(&player_key);
-
-        if *from_key != player_key {
-            state.collected_keys.insert(from_key.to_owned());
-        }
-
-        let other_keys = keys_array
-            .iter()
-            .filter(|k| {
-                // only path to the key if we have yet to collect it, and it's not the key we're currently pathing from
-                !state.collected_keys.contains(*k) && from_key != *k
-            })
-            .map(|k| {
-                let mut key_path = state.key_path.clone();
-                key_path.push(k.to_owned());
-                key_path
-            })
-            .filter(|key_path| {
-                let path_result =
-                    get_path(&room, &key_positions, &mut paths, &player_pos, &key_path);
-
-                // if the path to that key has doors, keep doors where we dont have the key
-                // if the length is 0, we've unlocked the doors
-                path_result
-                    .blocked_by
-                    .iter()
-                    .filter(|k| !state.collected_keys.contains(&k.to_lowercase()))
-                    .collect::<Vec<&String>>()
-                    .len()
-                    == 0
-            })
-            .collect::<Vec<Vec<String>>>();
-
-        // println!(
-        //     "key: {}, steps: {}, pos: {:?}, collected: {:?}, key path: {:?}, options: {:?}",
-        //     from_key,
-        //     state.steps,
-        //     state.pos,
-        //     state.collected_keys,
-        //     state.key_path,
-        //     other_keys
-        //         .iter()
-        //         .map(|key_path| { key_path.last().unwrap() })
-        //         .collect::<Vec<&String>>()
-        // );
-        if state.collected_keys.len() == keys_array.len() {
-            println!("{}", state.steps);
-            break;
-        }
-
-        for key_path in &other_keys {
-            let path_result = get_path(&room, &key_positions, &mut paths, &player_pos, &key_path);
-            heap.push(IterationState {
-                collected_keys: state.collected_keys.clone(),
-                steps: path_result.distance,
-                pos: key_positions
-                    .get(key_path.last().unwrap())
-                    .unwrap()
-                    .to_owned(),
-                key_path: key_path.to_owned(),
-            })
+        for j in (i + 1)..keys_to_collect.len() {
+            write_path(
+                &room,
+                &key_positions,
+                &mut paths,
+                &player_pos,
+                &vec![key.to_owned(), keys_to_collect[j].clone()],
+            );
         }
     }
+
+    let mut distance_cache: HashMap<(String, Vec<String>), usize> = HashMap::new();
+
+    let count = get_distance_to_collect_keys(
+        &room,
+        &key_positions,
+        &paths,
+        &mut distance_cache,
+        &"@".to_string(),
+        keys_to_collect,
+    );
+
+    println!("{}", count);
 
     Ok(())
 }
