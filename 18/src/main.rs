@@ -1,7 +1,6 @@
 use std::cmp::{Eq, Ord, Ordering};
 use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::io::Result;
-use std::path;
 
 use read_input;
 
@@ -189,15 +188,17 @@ fn write_path<'a>(
         }
     }
 
-    paths.insert(
-        path_key.clone(),
-        PathResult::new(
-            from_pos.clone(),
-            to_pos.to_owned(),
-            blocked_by,
-            tracked_positions.len(),
-        ),
-    );
+    if tracked_positions.len() > 0 {
+        paths.insert(
+            path_key.clone(),
+            PathResult::new(
+                from_pos.clone(),
+                to_pos.to_owned(),
+                blocked_by,
+                tracked_positions.len(),
+            ),
+        );
+    }
 }
 
 fn get_path<'a>(
@@ -275,7 +276,7 @@ fn main() -> Result<()> {
 
     let mut room: Room = HashMap::new();
 
-    let mut player_pos = (0, 0);
+    let mut player_positions = Vec::new();
 
     let mut key_positions = HashMap::new();
 
@@ -287,7 +288,7 @@ fn main() -> Result<()> {
                 room.insert((col, row), Tile::Wall);
             } else if ch == '@' {
                 room.insert((col, row), Tile::Open);
-                player_pos = (col, row);
+                player_positions.push((col, row));
             } else {
                 let value = ch.to_string();
                 if value == value.to_lowercase() {
@@ -309,23 +310,25 @@ fn main() -> Result<()> {
         .map(|(key, _pos)| key.to_owned())
         .collect::<Vec<String>>();
 
-    for (i, key) in keys_to_collect.iter().enumerate() {
-        write_path(
-            &room,
-            &key_positions,
-            &mut paths,
-            &player_pos,
-            &vec![player_start_key.clone(), key.to_owned()],
-        );
-
-        for j in (i + 1)..keys_to_collect.len() {
+    for player_pos in &player_positions {
+        for (i, key) in keys_to_collect.iter().enumerate() {
             write_path(
                 &room,
                 &key_positions,
                 &mut paths,
-                &player_pos,
-                &vec![key.to_owned(), keys_to_collect[j].clone()],
+                player_pos,
+                &vec![player_start_key.clone(), key.to_owned()],
             );
+
+            for j in (i + 1)..keys_to_collect.len() {
+                write_path(
+                    &room,
+                    &key_positions,
+                    &mut paths,
+                    player_pos,
+                    &vec![key.to_owned(), keys_to_collect[j].clone()],
+                );
+            }
         }
     }
 
