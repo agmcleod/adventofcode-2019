@@ -1,5 +1,6 @@
 use std::cmp::{Eq, Ord, Ordering};
 use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::env;
 use std::io::Result;
 
 use read_input;
@@ -277,7 +278,14 @@ fn get_distance_to_collect_keys(
 }
 
 fn main() -> Result<()> {
-    let input = read_input::read_text("18/input.txt")?;
+    let args: Vec<String> = env::args().collect();
+    let mut input_path = "18/input.txt";
+    let mut is_p2 = false;
+    if args.len() >= 2 && args[1] == "p2" {
+        input_path = "18/inputp2.txt";
+        is_p2 = true;
+    }
+    let input = read_input::read_text(input_path)?;
 
     let mut room: Room = HashMap::new();
 
@@ -337,18 +345,52 @@ fn main() -> Result<()> {
         }
     }
 
-    let mut distance_cache: HashMap<(String, Vec<String>), usize> = HashMap::new();
+    if is_p2 {
+        let mut groups: HashMap<Pos, Vec<String>> = HashMap::new();
+        for (key, path_result) in &paths {
+            if !key.contains("@") {
+                continue;
+            }
+            let key_for_group = key.split("->").last().unwrap().to_owned();
+            if groups.contains_key(&path_result.from) {
+                groups
+                    .get_mut(&path_result.from)
+                    .unwrap()
+                    .push(key_for_group);
+            } else {
+                groups.insert(path_result.from.clone(), vec![key_for_group]);
+            }
+        }
 
-    let count = get_distance_to_collect_keys(
-        &room,
-        &key_positions,
-        &paths,
-        &mut distance_cache,
-        &"@".to_string(),
-        keys_to_collect,
-    );
+        println!("{:?}", groups);
 
-    println!("{}", count);
+        let mut sum = 0;
+        for (_pos, keys_to_collect) in &groups {
+            let mut distance_cache: HashMap<(String, Vec<String>), usize> = HashMap::new();
+            sum += get_distance_to_collect_keys(
+                &room,
+                &key_positions,
+                &paths,
+                &mut distance_cache,
+                &"@".to_string(),
+                keys_to_collect.to_owned(),
+            );
+        }
+        println!("{}", sum);
+    } else {
+        let mut distance_cache: HashMap<(String, Vec<String>), usize> = HashMap::new();
+
+        let count = get_distance_to_collect_keys(
+            &room,
+            &key_positions,
+            &paths,
+            &mut distance_cache,
+            &"@".to_string(),
+            keys_to_collect,
+        );
+
+        println!("{}", count);
+    }
 
     Ok(())
 }
