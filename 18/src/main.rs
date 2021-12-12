@@ -205,12 +205,9 @@ fn get_path<'a>(
     paths: &'a HashMap<String, PathResult>,
     current_key: &String,
     next_key: &String,
-) -> &'a PathResult {
+) -> Option<&'a PathResult> {
     let key = get_paths_key(&vec![current_key.to_owned(), next_key.to_owned()]);
-    match paths.get(&key) {
-        Some(res) => res,
-        None => panic!("Could not find path for key: {}", key),
-    }
+    paths.get(&key)
 }
 
 fn get_distance_to_collect_keys(
@@ -235,10 +232,18 @@ fn get_distance_to_collect_keys(
         .iter()
         .filter(|next_key| {
             let path_to_next_key = get_path(paths, current_key, *next_key);
+            if path_to_next_key.is_none() {
+                return false;
+            }
             // check that the path to the key has no doors that we have yet to collect keys for
             keys_to_collect
                 .iter()
-                .filter(|k| path_to_next_key.blocked_by.contains(&k.to_uppercase()))
+                .filter(|k| {
+                    path_to_next_key
+                        .unwrap()
+                        .blocked_by
+                        .contains(&k.to_uppercase())
+                })
                 .count()
                 == 0
         })
@@ -250,7 +255,7 @@ fn get_distance_to_collect_keys(
 
     let mut count = std::usize::MAX;
     for key in &reachable_keys {
-        let distance = get_path(paths, current_key, key).distance
+        let distance = get_path(paths, current_key, key).unwrap().distance
             + get_distance_to_collect_keys(
                 room,
                 key_positions,
