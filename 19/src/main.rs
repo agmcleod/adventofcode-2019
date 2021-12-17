@@ -37,19 +37,39 @@ fn main() -> io::Result<()> {
     let slope_1: f32 = 49.0 / min_x as f32;
     let slope_2: f32 = 49.0 / max_x as f32;
 
+    // width of the ray at 50 y
     let x_diff = max_x - min_x;
-    let possible_y = 100 / x_diff * 50;
-    // Slope equation, m = (y2 - y1) / (x2 - x1)
-    // with slope value, we can simplify to get x2 using:
-    // x2 = y2 / m
-    let possible_x_min = (possible_y as f32 / slope_1).round() as i64;
-    let possible_x_max = (possible_y as f32 / slope_2).round() as i64;
+
+    // defines the amount of spaces inset from the left so the ship can fit vertically in the ray
+    let x_inset_for_ship = (100.0 / slope_1).round() as i64;
+    println!("inset {}", x_inset_for_ship);
+
+    // Get first y coordinate of the ray that is at least as wide as the offset + space ship
+    // Given slope is consistent, we can take desired width of 100, see how many steps are required based on current width
+    // and then multiply it by the current height (50)
+    let desired_width = x_inset_for_ship + 100;
+    let mut possible_y = (desired_width as f32 / x_diff as f32 * 50.0).round();
+
+    loop {
+        possible_y -= 1.0;
+        // Slope equation, m = (y2 - y1) / (x2 - x1)
+        // with slope value, setting (x1, y1) = (0, 0) we can simplify to get x2 using:
+        // x2 = y2 / m
+        let prev_x_min = (possible_y / slope_1).round() as i64;
+        let prev_x_max = (possible_y / slope_2).round() as i64;
+        if prev_x_max - prev_x_min < desired_width {
+            possible_y += 1.0;
+            break;
+        }
+    }
+
+    let possible_x_min = (possible_y / slope_1).round() as i64;
 
     println!(
-        "{} & {} = {}",
-        possible_x_min,
-        possible_x_max,
-        possible_x_max - possible_x_min
+        "{} at min x {}, y {}",
+        (possible_x_min + x_inset_for_ship) * 10_000 + possible_y as i64,
+        possible_x_min + x_inset_for_ship,
+        possible_y
     );
 
     Ok(())
