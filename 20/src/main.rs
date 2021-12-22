@@ -11,10 +11,17 @@ enum Tile {
 
 type Pos = (i32, i32);
 
+#[derive(Debug, PartialEq)]
+enum GateType {
+    Interior,
+    Exterior,
+}
+
 #[derive(Debug)]
 struct Path {
     pos: Pos,
     steps: i32,
+    gate_type: GateType,
 }
 
 fn add_gate(gates: &mut HashMap<String, Vec<Pos>>, gate: String, pos: Pos) {
@@ -110,15 +117,25 @@ fn recurse_paths(
     current_pos: &Pos,
     walked_path: &mut HashSet<Pos>,
     count: i32,
+    edges: &(i32, i32, i32, i32),
 ) {
     let neighbours = get_neighbours(&map, current_pos, &walked_path);
 
     for neighbour in &neighbours {
         walked_path.insert(neighbour.to_owned());
         if gate_positions.contains_key(neighbour) {
+            let mut gate_type = GateType::Interior;
+            if neighbour.0 == edges.0
+                || neighbour.0 == edges.1
+                || neighbour.1 == edges.2
+                || neighbour.1 == edges.3
+            {
+                gate_type = GateType::Exterior;
+            }
             gate_paths.get_mut(origin).unwrap().push(Path {
                 pos: neighbour.to_owned(),
                 steps: count + 1,
+                gate_type,
             });
         } else {
             recurse_paths(
@@ -129,6 +146,7 @@ fn recurse_paths(
                 neighbour,
                 walked_path,
                 count + 1,
+                edges,
             );
         }
     }
@@ -138,21 +156,55 @@ fn run_through_portals(
     gate_paths: &HashMap<Pos, Vec<Path>>,
     gates: &HashMap<String, Vec<Pos>>,
     from: &Pos,
+    aa_pos: &Pos,
     zz_pos: &Pos,
     used_positions: HashSet<Pos>,
     steps: i32,
     options: &mut Vec<i32>,
     gate_positions: &HashMap<Pos, String>,
+    recursive_maze: bool,
+    layer: usize,
 ) {
     let paths = gate_paths
         .get(from)
         .unwrap()
         .iter()
-        .filter(|p| !used_positions.contains(&p.pos))
+        .filter(|p| {
+            if used_positions.contains(&p.pos)
+                && (!recursive_maze || p.gate_type == GateType::Interior)
+                || p.pos == *aa_pos
+            {
+                return false;
+            }
+
+            // any exterior paths not AA or ZZ are not reachable yet
+            if recursive_maze
+                && layer == 1
+                && p.gate_type == GateType::Exterior
+                && p.pos != *aa_pos
+                && p.pos != *zz_pos
+            {
+                return false;
+            }
+
+            return true;
+        })
         .collect::<Vec<&Path>>();
+
+    println!(
+        "from {:?} {} options: {:?} layer: {}",
+        from,
+        gate_positions.get(from).unwrap(),
+        paths,
+        layer
+    );
 
     for path in paths {
         if path.pos == *zz_pos {
+            // if we're recursing for p2, and we're deeper than layer 1, skip ZZ
+            if recursive_maze && layer > 1 {
+                continue;
+            }
             options.push(steps + path.steps);
         } else {
             // remove the current portal entrance from the available options
@@ -173,15 +225,28 @@ fn run_through_portals(
                 );
             }
 
+            let layer = if recursive_maze {
+                if path.gate_type == GateType::Exterior {
+                    layer - 1
+                } else {
+                    layer + 1
+                }
+            } else {
+                layer
+            };
+
             run_through_portals(
                 gate_paths,
                 gates,
                 next_pos.unwrap(),
+                aa_pos,
                 zz_pos,
                 used_positions,
                 steps + path.steps + 1,
                 options,
                 gate_positions,
+                recursive_maze,
+                layer,
             )
         }
     }
@@ -194,15 +259,29 @@ fn main() -> Result<()> {
     let mut gates = HashMap::new();
     let mut gate_positions = HashMap::new();
 
+    let mut min_x = std::i32::MAX;
+    let mut max_x = 0;
+    let mut min_y = std::i32::MAX;
+    let mut max_y = 0;
+
     for (row, line) in input.lines().enumerate() {
         for (col, ch) in line.chars().enumerate() {
+            let row = row as i32;
+            let col = col as i32;
             if ch != ' ' && ch != '#' {
                 let tile = match ch {
                     '.' => Tile::Path,
                     _ => Tile::GateLatter(ch.to_string()),
                 };
 
-                map.insert((col as i32, row as i32), tile);
+                map.insert((col, row), tile);
+            }
+            if ch == '#' {
+                min_x = min_x.min(col);
+                max_x = max_x.max(col);
+
+                min_y = min_y.min(row);
+                max_y = max_y.max(row);
             }
         }
     }
@@ -250,6 +329,7 @@ fn main() -> Result<()> {
             coord,
             &mut walked_path,
             0,
+            &(min_x, max_x, min_y, max_y),
         );
     }
 
@@ -267,15 +347,38 @@ fn main() -> Result<()> {
         &gate_paths,
         &gates,
         &aa,
+        &aa,
         &zz,
         used_positions,
         0,
         &mut options,
         &gate_positions,
+        false,
+        1,
     );
 
     options.sort();
+    println!("{:?}", options[0]);
 
+    // p2
+    let mut options = Vec::new();
+    let mut used_positions = HashSet::new();
+    used_positions.insert(aa.clone());
+    run_through_portals(
+        &gate_paths,
+        &gates,
+        &aa,
+        &aa,
+        &zz,
+        used_positions,
+        0,
+        &mut options,
+        &gate_positions,
+        true,
+        1,
+    );
+
+    options.sort();
     println!("{:?}", options[0]);
 
     Ok(())
