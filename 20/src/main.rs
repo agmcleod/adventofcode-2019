@@ -1,4 +1,5 @@
-use std::collections::{HashMap, HashSet};
+use std::cmp::{Ord, Ordering};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::io::Result;
 
 use read_input::read_text;
@@ -22,6 +23,26 @@ struct Path {
     pos: Pos,
     steps: i32,
     gate_type: GateType,
+}
+
+#[derive(Eq, PartialEq)]
+struct WorkItem {
+    from: Pos,
+    used_positions: HashSet<(Pos, usize)>,
+    steps: i32,
+    layer: usize,
+}
+
+impl Ord for WorkItem {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.steps.cmp(&self.steps)
+    }
+}
+
+impl PartialOrd for WorkItem {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 fn add_gate(gates: &mut HashMap<String, Vec<Pos>>, gate: String, pos: Pos) {
@@ -153,24 +174,24 @@ fn recurse_paths(
 }
 
 fn run_through_portals(
+    work: &mut BinaryHeap<WorkItem>,
     gate_paths: &HashMap<Pos, Vec<Path>>,
     gates: &HashMap<String, Vec<Pos>>,
     from: &Pos,
     aa_pos: &Pos,
     zz_pos: &Pos,
-    used_positions: HashSet<Pos>,
+    used_positions: &HashSet<(Pos, usize)>,
     steps: i32,
-    options: &mut Vec<i32>,
     gate_positions: &HashMap<Pos, String>,
     recursive_maze: bool,
     layer: usize,
-) {
+) -> i32 {
     let paths = gate_paths
         .get(from)
         .unwrap()
         .iter()
         .filter(|p| {
-            if (!recursive_maze && used_positions.contains(&p.pos)) || p.pos == *aa_pos {
+            if used_positions.contains(&(p.pos, layer)) || p.pos == *aa_pos {
                 return false;
             }
 
@@ -188,26 +209,26 @@ fn run_through_portals(
         })
         .collect::<Vec<&Path>>();
 
-    if recursive_maze {
-        println!(
-            "from {:?} {} options: {:?} layer: {}",
-            from,
-            gate_positions.get(from).unwrap(),
-            paths
-                .iter()
-                .map(|p| {
-                    format!(
-                        "pos: {:?}, steps {}, gate_type: {:?}, gate: {}",
-                        p.pos,
-                        p.steps,
-                        p.gate_type,
-                        gate_positions.get(&p.pos).unwrap()
-                    )
-                })
-                .collect::<Vec<String>>(),
-            layer
-        );
-    }
+    // if recursive_maze {
+    //     println!(
+    //         "from {:?} {} options: {:?} layer: {}",
+    //         from,
+    //         gate_positions.get(from).unwrap(),
+    //         paths
+    //             .iter()
+    //             .map(|p| {
+    //                 format!(
+    //                     "pos: {:?}, steps {}, gate_type: {:?}, gate: {}",
+    //                     p.pos,
+    //                     p.steps,
+    //                     p.gate_type,
+    //                     gate_positions.get(&p.pos).unwrap()
+    //                 )
+    //             })
+    //             .collect::<Vec<String>>(),
+    //         layer
+    //     );
+    // }
 
     for path in paths {
         if path.pos == *zz_pos {
@@ -215,11 +236,11 @@ fn run_through_portals(
             if recursive_maze && layer > 1 {
                 continue;
             }
-            options.push(steps + path.steps);
+            return steps + path.steps;
         } else {
             // remove the current portal entrance from the available options
             let mut used_positions = used_positions.clone();
-            used_positions.insert(path.pos.clone());
+            used_positions.insert((path.pos.clone(), layer));
             let gate_string = gate_positions.get(&path.pos).unwrap();
 
             let next_pos = gates
@@ -245,21 +266,16 @@ fn run_through_portals(
                 layer
             };
 
-            run_through_portals(
-                gate_paths,
-                gates,
-                next_pos.unwrap(),
-                aa_pos,
-                zz_pos,
-                used_positions,
-                steps + path.steps + 1,
-                options,
-                gate_positions,
-                recursive_maze,
+            work.push(WorkItem {
+                from: next_pos.unwrap().to_owned(),
                 layer,
-            )
+                steps: steps + path.steps + 1,
+                used_positions,
+            });
         }
     }
+
+    0
 }
 
 fn main() -> Result<()> {
@@ -350,46 +366,69 @@ fn main() -> Result<()> {
     let aa = gates.get("AA").unwrap()[0];
     let zz = gates.get("ZZ").unwrap()[0];
 
-    let mut options = Vec::new();
     let mut used_positions = HashSet::new();
-    used_positions.insert(aa.clone());
-    run_through_portals(
-        &gate_paths,
-        &gates,
-        &aa,
-        &aa,
-        &zz,
-        used_positions,
-        0,
-        &mut options,
-        &gate_positions,
-        false,
-        1,
-    );
+    used_positions.insert((aa.clone(), 1));
 
-    options.sort();
-    println!("{:?}", options[0]);
+    let mut work = BinaryHeap::new();
+    work.push(WorkItem {
+        from: aa.clone(),
+        layer: 1,
+        steps: 0,
+        used_positions,
+    });
+
+    while let Some(work_item) = work.pop() {
+        let result = run_through_portals(
+            &mut work,
+            &gate_paths,
+            &gates,
+            &work_item.from,
+            &aa,
+            &zz,
+            &work_item.used_positions,
+            work_item.steps,
+            &gate_positions,
+            false,
+            work_item.layer,
+        );
+
+        if result > 0 {
+            println!("{}", result);
+            break;
+        }
+    }
 
     // p2
-    let mut options = Vec::new();
     let mut used_positions = HashSet::new();
-    used_positions.insert(aa.clone());
-    run_through_portals(
-        &gate_paths,
-        &gates,
-        &aa,
-        &aa,
-        &zz,
+    used_positions.insert((aa.clone(), 1));
+    let mut work = BinaryHeap::new();
+    work.push(WorkItem {
+        from: aa.clone(),
+        layer: 1,
+        steps: 0,
         used_positions,
-        0,
-        &mut options,
-        &gate_positions,
-        true,
-        1,
-    );
+    });
 
-    options.sort();
-    println!("{:?}", options[0]);
+    while let Some(work_item) = work.pop() {
+        let result = run_through_portals(
+            &mut work,
+            &gate_paths,
+            &gates,
+            &work_item.from,
+            &aa,
+            &zz,
+            &work_item.used_positions,
+            work_item.steps,
+            &gate_positions,
+            true,
+            work_item.layer,
+        );
+
+        if result > 0 {
+            println!("{}", result);
+            break;
+        }
+    }
 
     Ok(())
 }
