@@ -170,10 +170,7 @@ fn run_through_portals(
         .unwrap()
         .iter()
         .filter(|p| {
-            if used_positions.contains(&p.pos)
-                && (!recursive_maze || p.gate_type == GateType::Interior)
-                || p.pos == *aa_pos
-            {
+            if (!recursive_maze && used_positions.contains(&p.pos)) || p.pos == *aa_pos {
                 return false;
             }
 
@@ -191,13 +188,26 @@ fn run_through_portals(
         })
         .collect::<Vec<&Path>>();
 
-    println!(
-        "from {:?} {} options: {:?} layer: {}",
-        from,
-        gate_positions.get(from).unwrap(),
-        paths,
-        layer
-    );
+    if recursive_maze {
+        println!(
+            "from {:?} {} options: {:?} layer: {}",
+            from,
+            gate_positions.get(from).unwrap(),
+            paths
+                .iter()
+                .map(|p| {
+                    format!(
+                        "pos: {:?}, steps {}, gate_type: {:?}, gate: {}",
+                        p.pos,
+                        p.steps,
+                        p.gate_type,
+                        gate_positions.get(&p.pos).unwrap()
+                    )
+                })
+                .collect::<Vec<String>>(),
+            layer
+        );
+    }
 
     for path in paths {
         if path.pos == *zz_pos {
