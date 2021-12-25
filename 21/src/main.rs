@@ -54,6 +54,7 @@ fn main() -> Result<()> {
     instructions.push("NOT C T"); // set register to true if C is a hole
     instructions.push("OR T J"); // keep jumping if it's a hole
     instructions.push("AND D J"); // keep jumping if D is safe
+    instructions.push("AND H J"); // keep jumping if H is safe
     instructions.push("NOT A T"); // if next space is a hole, set register
     instructions.push("OR T J"); // jump if jumping or A is a hole
     instructions.push("RUN");
