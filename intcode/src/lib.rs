@@ -93,6 +93,12 @@ fn insert_into_program(program: &mut Vec<i64>, position: usize, value: i64) {
     program[position] = value;
 }
 
+pub fn get_base_program(text: &String) -> Vec<i64> {
+    text.split(",")
+        .map(|n| n.parse().expect("Could not parse number"))
+        .collect()
+}
+
 pub fn run_program<F>(state: &mut ProgramState, limit_input_use: bool, mut handle_output: F)
 where
     F: FnMut(&mut ProgramState, i64) -> bool,
