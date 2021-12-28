@@ -1,5 +1,6 @@
-use std::io::Result;
+use std::{io::Result, ops::Mul};
 
+use num::{self, FromPrimitive, ToPrimitive};
 use read_input::read_text;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -9,10 +10,10 @@ enum Instruction {
 }
 
 impl Instruction {
-    fn next_position_for_coord(&self, card: i64, deck_size: i64) -> i64 {
+    fn next_position_for_card(&self, card: i64, deck_size: i64) -> i64 {
         match self {
-            &Instruction::Cut(n) => ((card - n) % deck_size).abs(),
-            &Instruction::Increment(n) => ((card * n) % deck_size).abs(),
+            &Instruction::Cut(n) => mod_floor(card - n, deck_size),
+            &Instruction::Increment(n) => mod_floor(card * n, deck_size),
         }
     }
 
@@ -20,7 +21,7 @@ impl Instruction {
         match self {
             &Instruction::Cut(n) => match other {
                 &Instruction::Cut(other) => {
-                    vec![Instruction::Cut(((n + other) % deck_size).abs())]
+                    vec![Instruction::Cut(mod_floor(n + other, deck_size))]
                 }
                 &Instruction::Increment(other) => {
                     vec![
@@ -40,6 +41,15 @@ impl Instruction {
 
     fn can_be_combined(&self, other: &Self) -> bool {
         !(matches!(self, Self::Increment(_)) && matches!(other, Self::Cut(_)))
+    }
+}
+
+fn mod_floor(n: i64, m: i64) -> i64 {
+    let r = n % m;
+    if r < 0 {
+        r + m
+    } else {
+        r
     }
 }
 
@@ -66,55 +76,27 @@ fn get_instructions_from_input(text: &String, deck_size: i64) -> Vec<Instruction
 }
 
 fn mul_mod(a: i64, b: i64, modulous: i64) -> i64 {
-    a * b % modulous
+    let n = num::BigInt::from_i64(a)
+        .unwrap()
+        .mul(num::BigInt::from_i64(b).unwrap())
+        % num::BigInt::from_i64(modulous).unwrap();
+
+    n.to_i64().unwrap()
+    // (a * b) % modulous
 }
 
-fn process_shuffle(deck: &mut Vec<usize>, text: &String) {
-    for line in text.lines() {
-        if line.starts_with("cut") {
-            let cut = line.split(" ").nth(1).unwrap();
-            let cut: i32 = cut.parse().expect("could not parse cut as number");
-            if cut < 0 {
-                deck.rotate_right((cut * -1) as usize);
-            } else {
-                deck.rotate_left(cut as usize);
-            }
-        } else if line.starts_with("deal into") {
-            deck.reverse();
-        } else if line.starts_with("deal with") {
-            let incr = line.split(" ").last().unwrap();
-            let incr: usize = incr.parse().expect("Could not parse increment");
-
-            let mut table = deck.clone();
-            let mut idx = 0;
-            while idx < deck.len() {
-                table[idx * incr % deck.len()] = deck[idx];
-                idx += 1;
-            }
-
-            *deck = table;
-        } else {
-            panic!("Didnt understand command: {}", line);
-        }
-    }
-}
-
-fn reduce_shuffle_process(
-    deck_size: i64,
-    mut initial_process: Vec<Instruction>,
-) -> Vec<Instruction> {
-    while initial_process.len() > 2 {
+fn reduce_shuffle_process(deck_size: i64, mut instructions: Vec<Instruction>) -> Vec<Instruction> {
+    while instructions.len() > 2 {
         let mut offset = 0;
-        while offset < initial_process.len() - 1 {
-            if initial_process[offset].can_be_combined(&initial_process[offset + 1]) {
+        while offset < instructions.len() - 1 {
+            if instructions[offset].can_be_combined(&instructions[offset + 1]) {
                 // combine next technique with this one to make a new one
-                let combined =
-                    initial_process[offset].combine(&initial_process[offset + 1], deck_size);
+                let combined = instructions[offset].combine(&instructions[offset + 1], deck_size);
                 // remove both items
-                initial_process.remove(offset);
-                initial_process.remove(offset);
+                instructions.remove(offset);
+                instructions.remove(offset);
                 for (i, ins) in combined.iter().enumerate() {
-                    initial_process.insert(offset + i, ins.clone());
+                    instructions.insert(offset + i, ins.clone());
                 }
 
                 offset = (offset - 1).max(0);
@@ -124,7 +106,7 @@ fn reduce_shuffle_process(
         }
     }
 
-    initial_process
+    instructions
 }
 
 // Create a reduced shuffle process repeated the given number of times by doubling the amount
@@ -137,35 +119,47 @@ fn repeat_shuffle_process(
     // iterate trough the bits in the binary representation of the number of times to repeat
     // from least significant to most significant
 
-    let binary_times = format!("{:b}", times).chars().rev();
-    for bit in binary_times {
-        if bit == '1' {}
+    let mut result = Vec::new();
+    let mut current = process.clone();
+
+    let mut iterations_left = times;
+    while iterations_left > 0 {
+        if iterations_left % 2 == 1 {
+            // A number is the sum of the value of all the ones in the binary representation
+            // Store the process for all bits that are set
+            result.append(&mut current.clone());
+        }
+        current.append(&mut current.clone());
+        current = reduce_shuffle_process(deck_size, current);
+        iterations_left /= 2;
     }
+
+    reduce_shuffle_process(deck_size, result)
+}
+
+fn final_position_for_card(card: i64, deck_size: i64, instructions: &Vec<Instruction>) -> i64 {
+    instructions.iter().fold(card, |card, instr| {
+        instr.next_position_for_card(card, deck_size)
+    })
 }
 
 fn main() -> Result<()> {
     let text = read_text("22/input.txt")?;
 
-    const P1_ITERATIONS: usize = 10007;
-    // let mut deck: Vec<usize> = Vec::with_capacity(P1_ITERATIONS);
-
-    // for n in 0..P1_ITERATIONS {
-    //     deck.push(n);
-    // }
-
-    // process_shuffle(&mut deck, &text);
-
-    // println!("{:?}", deck.iter().position(|v| *v == 2019));
+    let p1_size = 10007;
+    let instructions = get_instructions_from_input(&text, p1_size);
+    let instructions = reduce_shuffle_process(p1_size, instructions);
+    println!("{:?}", instructions);
+    println!("{}", final_position_for_card(2019, p1_size, &instructions));
 
     // p2
-
     // referencing https://github.com/nibarius/aoc/blob/master/src/main/aoc2019/Day22.kt
     // pulling comments and explanations from there.
-    // Also a nice reference on this problem, but im not sure how to bring that into code: https://codeforces.com/blog/entry/72593
+    // Also a nice reference on this problem, but im not sure how to bring that into code:
+    // https://codeforces.com/blog/entry/72593
 
-    const deck_size: usize = 119_315_717_514_047;
-    const repeats: usize = 101_741_582_076_661;
-    let target_position = 2020;
+    let p2_size: i64 = 119_315_717_514_047;
+    let repeats: i64 = 101_741_582_076_661;
 
     /* Deck becomes sorted again after every deckSize - 1 repeats of the shuffle
         according to Euler's Theorem as mentioned in:
@@ -175,28 +169,17 @@ fn main() -> Result<()> {
         process. Calculate the number of times extra that the shuffle process has to be done to get to the
         original state.
     */
-    let shuffles_left = deck_size - 1 - repeats;
+    let shuffles_left = p2_size - 1 - repeats;
 
     // If we run the shuffle process 'shufflesLeftUntilInitialState' times and see at what position
     // the card that was at position 2020 ends up at we have the answer to the problem.
 
     // So first create a reduced shuffle process of two steps with the desired amount of shuffles
-    let reduced = reduce_shuffle_process(deck_size, &text);
+    let instructions = get_instructions_from_input(&text, p2_size);
+    let reduced = reduce_shuffle_process(p2_size, instructions);
+    let repeated = repeat_shuffle_process(&reduced, shuffles_left, p2_size);
+
+    println!("{}", final_position_for_card(2020, p2_size, &repeated));
 
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_increment_functionality() {
-        let mut deck = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-
-        let text = "deal with increment 3".to_string();
-        process_shuffle(&mut deck, &text);
-
-        assert_eq!(deck, vec![0, 7, 4, 1, 8, 5, 2, 9, 6, 3]);
-    }
 }
