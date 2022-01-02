@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::Result;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Barrier};
@@ -17,20 +18,26 @@ fn main() -> Result<()> {
         .map(|n| intcode::ProgramState::new(&base_program, vec![n, -1]))
         .collect();
 
-    let barrier = Arc::new(Barrier::new(nics.len()));
+    // let barrier = Arc::new(Barrier::new(nics.len()));
 
     let mut handlers = Vec::new();
-    let channels: Vec<(Sender<Packet>, Receiver<Packet>)> =
-        (0..50).map(|_n| channel::<Packet>()).collect();
+    let mut senders = Vec::new();
+    let mut receivers = HashMap::new();
+    for address in 0..50 {
+        let (sender, receiver) = channel::<Packet>();
+        senders.push(sender);
+        receivers.insert(address as i64, receiver);
+    }
 
     for mut nic in nics {
         let address = nic.inputs[0];
-        let barrier = barrier.clone();
-        let channel = channels.get(address as usize).unwrap();
-        let sender = channel.0.clone();
+        // let barrier = barrier.clone();
+        let receiver = receivers.remove(&address).unwrap();
+        let senders = senders.clone();
         let handler = thread::spawn(move || {
             let mut output_count = 0;
             let mut outputs = [0, 0, 0];
+
             intcode::run_program(&mut nic, false, |state, value| {
                 outputs[output_count] = value;
 
@@ -40,16 +47,15 @@ fn main() -> Result<()> {
                         if address < 0 {
                             panic!("Address was less than zero {}", address);
                         }
+                        let sender = senders.get(address as usize).unwrap();
                         sender.send((outputs[0], outputs[1], outputs[2])).unwrap();
-                    } else if address == 255 {
-                        println!("{} {}", address, state.inputs[0]);
                     }
                     output_count = 0;
                 } else {
                     output_count += 1;
                 }
 
-                barrier.wait();
+                // barrier.wait();
                 false
             });
         });
