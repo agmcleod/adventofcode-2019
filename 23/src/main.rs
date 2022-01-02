@@ -1,9 +1,5 @@
 use std::collections::HashMap;
 use std::io::Result;
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Arc, Barrier};
-use std::thread;
-use std::time::Duration;
 
 use intcode;
 use read_input::read_text;
@@ -14,57 +10,42 @@ fn main() -> Result<()> {
     let text = read_text("23/input.txt")?;
 
     let base_program = intcode::get_base_program(&text);
-    let nics: Vec<intcode::ProgramState> = (0..50)
+    let mut nics: Vec<intcode::ProgramState> = (0..50)
         .map(|n| intcode::ProgramState::new(&base_program, vec![n, -1]))
         .collect();
 
-    // let barrier = Arc::new(Barrier::new(nics.len()));
+    let mut packets: HashMap<i64, (usize, [i64; 3])> = HashMap::new();
 
-    let mut handlers = Vec::new();
-    let mut senders = Vec::new();
-    let mut receivers = HashMap::new();
-    for address in 0..50 {
-        let (sender, receiver) = channel::<Packet>();
-        senders.push(sender);
-        receivers.insert(address as i64, receiver);
-    }
+    'main: loop {
+        for address in 0..nics.len() {
+            let ai64 = address as i64;
+            if !packets.contains_key(&ai64) {
+                packets.insert(ai64, (0, [0, 0, 0]));
+            }
 
-    for mut nic in nics {
-        let address = nic.inputs[0];
-        // let barrier = barrier.clone();
-        let receiver = receivers.remove(&address).unwrap();
-        let senders = senders.clone();
-        let handler = thread::spawn(move || {
-            let mut output_count = 0;
-            let mut outputs = [0, 0, 0];
+            let (output_idx, outputs) = packets.get_mut(&ai64).unwrap();
+            let nic = nics.get_mut(address).unwrap();
+            let result = intcode::run_step(nic, false);
+            if let Some(value) = result.0 {
+                outputs[*output_idx] = value;
 
-            intcode::run_program(&mut nic, false, |state, value| {
-                outputs[output_count] = value;
-
-                if output_count == 2 {
-                    let address = outputs[0];
-                    if address < 50 {
-                        if address < 0 {
-                            panic!("Address was less than zero {}", address);
-                        }
-                        let sender = senders.get(address as usize).unwrap();
-                        sender.send((outputs[0], outputs[1], outputs[2])).unwrap();
+                if *output_idx == 2 {
+                    let receiver_addr = outputs[0] as usize;
+                    if receiver_addr < 50 {
+                        let receiver = nics.get_mut(receiver_addr).unwrap();
+                        receiver.inputs.push(outputs[1]);
+                        receiver.inputs.push(outputs[2]);
+                        receiver.inputs.push(-1);
+                    } else if receiver_addr == 255 {
+                        println!("{:?}", outputs);
+                        break 'main;
                     }
-                    output_count = 0;
+                    *output_idx = 0;
                 } else {
-                    output_count += 1;
+                    *output_idx += 1;
                 }
-
-                // barrier.wait();
-                false
-            });
-        });
-
-        handlers.push(handler);
-    }
-
-    for h in handlers {
-        h.join().unwrap();
+            }
+        }
     }
 
     Ok(())

@@ -99,105 +99,117 @@ pub fn get_base_program(text: &String) -> Vec<i64> {
         .collect()
 }
 
+pub fn run_step(state: &mut ProgramState, limit_input_use: bool) -> (Option<i64>, bool) {
+    let instructions_string = format!("{}", state.program[state.index]);
+    let mut instructions: Vec<char> = instructions_string.chars().collect();
+    instructions.reverse();
+
+    let op_code = instructions[0].to_digit(10).unwrap();
+
+    match op_code {
+        1 => {
+            let sum = get_value(&state.program, &state, 1, &instructions)
+                + get_value(&state.program, &state, 2, &instructions);
+
+            let sum_position = get_insert_value(&state.program, &state, 3, &instructions);
+            insert_into_program(&mut state.program, sum_position as usize, sum);
+            state.index += 4;
+        }
+        2 => {
+            let product = get_value(&state.program, &state, 1, &instructions)
+                * get_value(&state.program, &state, 2, &instructions);
+            let product_position = get_insert_value(&state.program, &state, 3, &instructions);
+            insert_into_program(&mut state.program, product_position as usize, product);
+            state.index += 4;
+        }
+        3 => {
+            let value_pos = get_insert_value(&state.program, &state, 1, &instructions) as usize;
+            if state.inputs_index >= state.inputs.len() && limit_input_use {
+                return (None, true);
+            }
+            let input = state
+                .inputs
+                .get(state.inputs_index)
+                .unwrap_or(state.inputs.last().unwrap());
+
+            insert_into_program(&mut state.program, value_pos, *input);
+
+            if state.inputs_index < state.inputs.len() {
+                state.inputs_index += 1;
+            }
+            state.index += 2;
+        }
+        4 => {
+            let output = get_value(&state.program, &state, 1, &instructions);
+            state.index += 2;
+            return (Some(output), false);
+        }
+        5 => {
+            if get_value(&state.program, &state, 1, &instructions) != 0 {
+                state.index = get_value(&state.program, &state, 2, &instructions) as usize;
+            } else {
+                state.index += 3;
+            }
+        }
+        6 => {
+            if get_value(&state.program, &state, 1, &instructions) == 0 {
+                state.index = get_value(&state.program, &state, 2, &instructions) as usize;
+            } else {
+                state.index += 3;
+            }
+        }
+        7 => {
+            let pos = get_insert_value(&state.program, &state, 3, &instructions) as usize;
+            if get_value(&state.program, &state, 1, &instructions)
+                < get_value(&state.program, &state, 2, &instructions)
+            {
+                insert_into_program(&mut state.program, pos, 1);
+            } else {
+                insert_into_program(&mut state.program, pos, 0);
+            }
+            state.index += 4;
+        }
+        8 => {
+            let pos = get_insert_value(&state.program, &state, 3, &instructions) as usize;
+            if get_value(&state.program, &state, 1, &instructions)
+                == get_value(&state.program, &state, 2, &instructions)
+            {
+                insert_into_program(&mut state.program, pos, 1);
+            } else {
+                insert_into_program(&mut state.program, pos, 0);
+            }
+            state.index += 4;
+        }
+        9 => {
+            let second_digit = instructions.get(1).unwrap_or(&'0');
+            if *second_digit == '9' {
+                state.finished = true;
+                return (None, true);
+            } else {
+                state.relative_base += get_value(&state.program, &state, 1, &instructions);
+            }
+            state.index += 2;
+        }
+        _ => panic!("Invalid opcode {} at {}", op_code, state.index),
+    }
+
+    (None, false)
+}
+
 pub fn run_program<F>(state: &mut ProgramState, limit_input_use: bool, mut handle_output: F)
 where
     F: FnMut(&mut ProgramState, i64) -> bool,
 {
     loop {
-        let instructions_string = format!("{}", state.program[state.index]);
-        let mut instructions: Vec<char> = instructions_string.chars().collect();
-        instructions.reverse();
-
-        let op_code = instructions[0].to_digit(10).unwrap();
-
-        match op_code {
-            1 => {
-                let sum = get_value(&state.program, &state, 1, &instructions)
-                    + get_value(&state.program, &state, 2, &instructions);
-
-                let sum_position = get_insert_value(&state.program, &state, 3, &instructions);
-                insert_into_program(&mut state.program, sum_position as usize, sum);
-                state.index += 4;
+        let result = run_step(state, limit_input_use);
+        if let Some(output) = result.0 {
+            let exit_now = handle_output(state, output);
+            if exit_now {
+                break;
             }
-            2 => {
-                let product = get_value(&state.program, &state, 1, &instructions)
-                    * get_value(&state.program, &state, 2, &instructions);
-                let product_position = get_insert_value(&state.program, &state, 3, &instructions);
-                insert_into_program(&mut state.program, product_position as usize, product);
-                state.index += 4;
-            }
-            3 => {
-                let value_pos = get_insert_value(&state.program, &state, 1, &instructions) as usize;
-                if state.inputs_index >= state.inputs.len() && limit_input_use {
-                    break;
-                }
-                let input = state
-                    .inputs
-                    .get(state.inputs_index)
-                    .unwrap_or(state.inputs.last().unwrap());
-
-                insert_into_program(&mut state.program, value_pos, *input);
-
-                if state.inputs_index < state.inputs.len() {
-                    state.inputs_index += 1;
-                }
-                state.index += 2;
-            }
-            4 => {
-                let output = get_value(&state.program, &state, 1, &instructions);
-                state.index += 2;
-                let exit_now = handle_output(state, output);
-                if exit_now {
-                    break;
-                }
-            }
-            5 => {
-                if get_value(&state.program, &state, 1, &instructions) != 0 {
-                    state.index = get_value(&state.program, &state, 2, &instructions) as usize;
-                } else {
-                    state.index += 3;
-                }
-            }
-            6 => {
-                if get_value(&state.program, &state, 1, &instructions) == 0 {
-                    state.index = get_value(&state.program, &state, 2, &instructions) as usize;
-                } else {
-                    state.index += 3;
-                }
-            }
-            7 => {
-                let pos = get_insert_value(&state.program, &state, 3, &instructions) as usize;
-                if get_value(&state.program, &state, 1, &instructions)
-                    < get_value(&state.program, &state, 2, &instructions)
-                {
-                    insert_into_program(&mut state.program, pos, 1);
-                } else {
-                    insert_into_program(&mut state.program, pos, 0);
-                }
-                state.index += 4;
-            }
-            8 => {
-                let pos = get_insert_value(&state.program, &state, 3, &instructions) as usize;
-                if get_value(&state.program, &state, 1, &instructions)
-                    == get_value(&state.program, &state, 2, &instructions)
-                {
-                    insert_into_program(&mut state.program, pos, 1);
-                } else {
-                    insert_into_program(&mut state.program, pos, 0);
-                }
-                state.index += 4;
-            }
-            9 => {
-                let second_digit = instructions.get(1).unwrap_or(&'0');
-                if *second_digit == '9' {
-                    state.finished = true;
-                    break;
-                } else {
-                    state.relative_base += get_value(&state.program, &state, 1, &instructions);
-                }
-                state.index += 2;
-            }
-            _ => panic!("Invalid opcode {} at {}", op_code, state.index),
+        }
+        if result.1 {
+            break;
         }
     }
 }
