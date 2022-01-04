@@ -231,6 +231,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "twentyfour"
+version = "0.1.0"
+dependencies = [
+ "read_input",
+]
+
+[[package]]
 name = "twentyone"
 version = "0.1.0"
 dependencies = [
